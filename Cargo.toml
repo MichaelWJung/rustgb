@@ -1,0 +1,7 @@
+[package]
+name = "rustgb"
+version = "0.1.0"
+authors = ["Michael Jung <MichaelWJung@users.noreply.github.com>"]
+
+[dependencies]
+sdl2 = "0.30"
