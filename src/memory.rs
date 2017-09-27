@@ -4,6 +4,12 @@ use std::io::Read;
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8;
     fn write_byte(&mut self, address: u16, value: u8);
+    fn write_word(&mut self, address: u16, value: u16) {
+        let low_byte = (value & 0xFF) as u8;
+        let high_byte = ((value & 0xFF00) >> 8) as u8;
+        self.write_byte(address, low_byte);
+        self.write_byte(address + 1, high_byte);
+    }
     fn read_block(&self, address: u16, size: usize) -> &[u8];
 }
 

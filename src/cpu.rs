@@ -1,5 +1,5 @@
 use memory::Memory;
-//use std::num::Wrapping;
+use std::num::Wrapping;
 
 pub struct Cpu<M: Memory> {
     registers: Registers,
@@ -141,6 +141,45 @@ impl<M: Memory> Cpu<M> {
             0xF0 => self.create_and_execute::<LDH_A_xN>(opcode),
             0xE0 => self.create_and_execute::<LDH_xN_A>(opcode),
 
+            0x01 => self.create_and_execute::<LD_BC_NN>(opcode),
+            0x11 => self.create_and_execute::<LD_DE_NN>(opcode),
+            0x21 => self.create_and_execute::<LD_HL_NN>(opcode),
+
+            0x31 => self.create_and_execute::<LD_SP_NN>(opcode),
+            0xF9 => self.create_and_execute::<LD_SP_HL>(opcode),
+            0xF8 => self.create_and_execute::<LDHL_SP_N>(opcode),
+            0x08 => self.create_and_execute::<LD_xNN_SP>(opcode),
+
+            0xF5 => self.create_and_execute::<PUSH_AF>(opcode),
+            0xC5 => self.create_and_execute::<PUSH_BC>(opcode),
+            0xD5 => self.create_and_execute::<PUSH_DE>(opcode),
+            0xE5 => self.create_and_execute::<PUSH_HL>(opcode),
+
+            0xF1 => self.create_and_execute::<POP_AF>(opcode),
+            0xC1 => self.create_and_execute::<POP_BC>(opcode),
+            0xD1 => self.create_and_execute::<POP_DE>(opcode),
+            0xE1 => self.create_and_execute::<POP_HL>(opcode),
+
+            0x87 => self.create_and_execute::<ADD_A_A>(opcode),
+            0x80 => self.create_and_execute::<ADD_A_B>(opcode),
+            0x81 => self.create_and_execute::<ADD_A_C>(opcode),
+            0x82 => self.create_and_execute::<ADD_A_D>(opcode),
+            0x83 => self.create_and_execute::<ADD_A_E>(opcode),
+            0x84 => self.create_and_execute::<ADD_A_H>(opcode),
+            0x85 => self.create_and_execute::<ADD_A_L>(opcode),
+            0x86 => self.create_and_execute::<ADD_A_xHL>(opcode),
+            0xC6 => self.create_and_execute::<ADD_A_N>(opcode),
+
+            0x8F => self.create_and_execute::<ADC_A_A>(opcode),
+            0x88 => self.create_and_execute::<ADC_A_B>(opcode),
+            0x89 => self.create_and_execute::<ADC_A_C>(opcode),
+            0x8A => self.create_and_execute::<ADC_A_D>(opcode),
+            0x8B => self.create_and_execute::<ADC_A_E>(opcode),
+            0x8C => self.create_and_execute::<ADC_A_H>(opcode),
+            0x8D => self.create_and_execute::<ADC_A_L>(opcode),
+            0x8E => self.create_and_execute::<ADC_A_xHL>(opcode),
+            0xCE => self.create_and_execute::<ADC_A_N>(opcode),
+
             x => panic!("Opcode unknown: {:X}", x),
         }
     }
@@ -191,6 +230,22 @@ struct Registers {
     cycles_of_last_command: u8,
 }
 
+macro_rules! generate_flag_getter_and_setter {
+    ($name_getter:ident, $name_setter:ident, $val:expr) => {
+        fn $name_getter(&self) -> bool {
+            (self.f & $val) != 0
+        }
+
+        fn $name_setter(&mut self, value: bool) {
+            if value {
+                self.f |= $val;
+            } else {
+                self.f &= !$val;
+            }
+        }
+    }
+}
+
 impl Registers {
     fn new() -> Registers {
         Registers {
@@ -207,6 +262,11 @@ impl Registers {
             cycles_of_last_command: 0,
         }
     }
+
+    generate_flag_getter_and_setter!(get_zero, set_zero, 0x80);
+    generate_flag_getter_and_setter!(get_operation, set_operation, 0x40);
+    generate_flag_getter_and_setter!(get_halfcarry, set_halfcarry, 0x20);
+    generate_flag_getter_and_setter!(get_carry, set_carry, 0x10);
 }
 
 trait OpConstruct {
@@ -217,18 +277,23 @@ trait OpExecute<M: Memory> {
     fn execute(&self, registers: &mut Registers, memory: &mut M);
 }
 
-fn decrement_register_pair(h: &mut u8, l: &mut u8) {
-    let mut value = (*h as u16) << 8 + *l as u16;
-    value -= 1;
+fn to_u16(h: u8, l: u8) -> u16 {
+    (h as u16) << 8 + l as u16
+}
+
+fn store_value_in_register_pair(value: u16, h: &mut u8, l: &mut u8) {
     *h = ((value & 0xFF00) >> 8) as u8;
     *l = (value & 0xFF) as u8;
 }
 
+fn decrement_register_pair(h: &mut u8, l: &mut u8) {
+    let value = to_u16(*h, *l) - 1;
+    store_value_in_register_pair(value, h, l);
+}
+
 fn increment_register_pair(h: &mut u8, l: &mut u8) {
-    let mut value = (*h as u16) << 8 + *l as u16;
-    value += 1;
-    *h = ((value & 0xFF00) >> 8) as u8;
-    *l = (value & 0xFF) as u8;
+    let value = to_u16(*h, *l) + 1;
+    store_value_in_register_pair(value, h, l);
 }
 
 macro_rules! create_opcode_struct {
@@ -255,6 +320,8 @@ macro_rules! create_opcode_struct {
 // N: 8-bit immediate
 // NN: 16-bit immediate
 // (HL), (BC), etc. are named xHL, xBC, etc.
+
+// 8-bit Loads /////////////////////////////////////////////////////////////////
 
 // Load 8-bit immediate into register
 macro_rules! ld_r_n {
@@ -350,7 +417,7 @@ macro_rules! ld_r_xrr {
         create_opcode_struct!($name);
         impl<M: Memory> OpExecute<M> for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut M) {
-                let address = (registers.$reg2 as u16) << 8 + registers.$reg3 as u16;
+                let address = to_u16(registers.$reg2, registers.$reg3);
                 registers.$reg1 = memory.read_byte(address);
                 registers.pc += 1;
                 registers.cycles_of_last_command = 8;
@@ -376,7 +443,7 @@ macro_rules! ld_xhl_r {
         create_opcode_struct!($name);
         impl<M: Memory> OpExecute<M> for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut M) {
-                let address = (registers.$reg1 as u16) << 8 + registers.$reg2 as u16;
+                let address = to_u16(registers.$reg1, registers.$reg2);
                 memory.write_byte(address, registers.$reg3);
                 registers.pc += 1;
                 registers.cycles_of_last_command = 8;
@@ -400,7 +467,7 @@ ld_xhl_r!(
 create_opcode_struct!(LD_xHL_N);
 impl<M: Memory> OpExecute<M> for LD_xHL_N {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (registers.h as u16) << 8 + registers.l as u16;
+        let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, self.b2);
         registers.pc += 2;
         registers.cycles_of_last_command = 12;
@@ -411,7 +478,7 @@ impl<M: Memory> OpExecute<M> for LD_xHL_N {
 create_opcode_struct!(LD_A_xNN);
 impl<M: Memory> OpExecute<M> for LD_A_xNN {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (self.b3 as u16) << 8 + self.b2 as u16;
+        let address = to_u16(self.b3, self.b2);
         registers.a = memory.read_byte(address);
         registers.pc += 3;
         registers.cycles_of_last_command = 16;
@@ -422,7 +489,7 @@ impl<M: Memory> OpExecute<M> for LD_A_xNN {
 create_opcode_struct!(LD_xNN_A);
 impl<M: Memory> OpExecute<M> for LD_xNN_A {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (self.b3 as u16) << 8 + self.b2 as u16;
+        let address = to_u16(self.b3, self.b2);
         memory.write_byte(address, registers.a);
         registers.pc += 3;
         registers.cycles_of_last_command = 16;
@@ -477,7 +544,7 @@ impl<M: Memory> OpExecute<M> for LDH_xN_A {
 create_opcode_struct!(LDD_A_xHL);
 impl<M: Memory> OpExecute<M> for LDD_A_xHL {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (registers.h as u16) << 8 + registers.l as u16;
+        let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         decrement_register_pair(&mut registers.h, &mut registers.l);
         registers.pc += 1;
@@ -489,7 +556,7 @@ impl<M: Memory> OpExecute<M> for LDD_A_xHL {
 create_opcode_struct!(LDD_xHL_A);
 impl<M: Memory> OpExecute<M> for LDD_xHL_A {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (registers.h as u16) << 8 + registers.l as u16;
+        let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         decrement_register_pair(&mut registers.h, &mut registers.l);
         registers.pc += 1;
@@ -501,7 +568,7 @@ impl<M: Memory> OpExecute<M> for LDD_xHL_A {
 create_opcode_struct!(LDI_A_xHL);
 impl<M: Memory> OpExecute<M> for LDI_A_xHL {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (registers.h as u16) << 8 + registers.l as u16;
+        let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         increment_register_pair(&mut registers.h, &mut registers.l);
         registers.pc += 1;
@@ -513,10 +580,249 @@ impl<M: Memory> OpExecute<M> for LDI_A_xHL {
 create_opcode_struct!(LDI_xHL_A);
 impl<M: Memory> OpExecute<M> for LDI_xHL_A {
     fn execute(&self, registers: &mut Registers, memory: &mut M) {
-        let address = (registers.h as u16) << 8 + registers.l as u16;
+        let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         increment_register_pair(&mut registers.h, &mut registers.l);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
     }
 }
+
+// 16-bit Loads ////////////////////////////////////////////////////////////////
+
+// Load 16-bit immediate into register pair
+macro_rules! ld_rr_nn {
+    ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let value = to_u16(self.b3, self.b2);
+                store_value_in_register_pair(value, &mut registers.$reg_high, &mut registers.$reg_low);
+                registers.pc += 3;
+                registers.cycles_of_last_command = 12;
+            }
+        }
+    )*}
+}
+ld_rr_nn!(
+    b, c: LD_BC_NN,
+    d, e: LD_DE_NN,
+    h, l: LD_HL_NN
+);
+
+// Load 16-bit immediate into stack pointer
+create_opcode_struct!(LD_SP_NN);
+impl<M: Memory> OpExecute<M> for LD_SP_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        registers.sp = to_u16(self.b3, self.b2);
+        registers.pc += 3;
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Load 16-bit immediate into stack pointer
+create_opcode_struct!(LD_SP_HL);
+impl<M: Memory> OpExecute<M> for LD_SP_HL {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        registers.sp = to_u16(registers.h, registers.l);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Put SP + n effective address into HL
+create_opcode_struct!(LDHL_SP_N);
+impl<M: Memory> OpExecute<M> for LDHL_SP_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        let address = registers.sp + self.b2 as u16;
+        store_value_in_register_pair(address, &mut registers.h, &mut registers.l);
+        registers.pc += 2;
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Save SP to given address
+create_opcode_struct!(LD_xNN_SP);
+impl<M: Memory> OpExecute<M> for LD_xNN_SP {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = self.b2 as u16 + (self.b3 as u16) << 8;
+        memory.write_word(address, registers.sp);
+        registers.pc += 3;
+        registers.cycles_of_last_command = 20;
+    }
+}
+
+// Push register pair onto stack. Decrement SP twice.
+macro_rules! push_nn {
+    ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                memory.write_byte(registers.sp, registers.$reg_high);
+                memory.write_byte(registers.sp - 1, registers.$reg_low);
+                registers.sp -= 2;
+                registers.pc += 1;
+                registers.cycles_of_last_command = 16;
+            }
+        }
+    )*}
+}
+push_nn!(
+    a, f: PUSH_AF,
+    b, c: PUSH_BC,
+    d, e: PUSH_DE,
+    h, l: PUSH_HL
+);
+
+// Pop two bytes off stack into register pair. Increment SP twice.
+macro_rules! pop_nn {
+    ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                registers.sp += 2;
+                registers.$reg_high = memory.read_byte(registers.sp);
+                registers.$reg_low = memory.read_byte(registers.sp - 1);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 12;
+            }
+        }
+    )*}
+}
+pop_nn!(
+    a, f: POP_AF,
+    b, c: POP_BC,
+    d, e: POP_DE,
+    h, l: POP_HL
+);
+
+// Add register to A
+macro_rules! add_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let a = registers.a;
+                let r = registers.$reg;
+                let sum = (Wrapping(a) + Wrapping(r)).0;
+                registers.set_zero(sum == 0);
+                registers.set_operation(false);
+                registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+                registers.set_carry((sum & 0xFF) < (a & 0xFF));
+                registers.a = sum;
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+add_a_r!(
+    a: ADD_A_A,
+    b: ADD_A_B,
+    c: ADD_A_C,
+    d: ADD_A_D,
+    e: ADD_A_E,
+    h: ADD_A_H,
+    l: ADD_A_L
+);
+
+create_opcode_struct!(ADD_A_xHL);
+impl<M: Memory> OpExecute<M> for ADD_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let sum = (Wrapping(a) + Wrapping(val)).0;
+        registers.set_zero(sum == 0);
+        registers.set_operation(false);
+        registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.a = sum;
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(ADD_A_N);
+impl<M: Memory> OpExecute<M> for ADD_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let sum = (Wrapping(a) + Wrapping(self.b2)).0;
+        registers.set_zero(sum == 0);
+        registers.set_operation(false);
+        registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.a = sum;
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Add register + carry flag to A
+macro_rules! adc_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let a = registers.a;
+                let r = registers.$reg;
+                let carry = registers.get_carry() as u8;
+                let sum = (Wrapping(a) + Wrapping(r) + Wrapping(carry)).0;
+                registers.set_zero(sum == 0);
+                registers.set_operation(false);
+                registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+                registers.set_carry((sum & 0xFF) < (a & 0xFF));
+                registers.a = sum;
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+adc_a_r!(
+    a: ADC_A_A,
+    b: ADC_A_B,
+    c: ADC_A_C,
+    d: ADC_A_D,
+    e: ADC_A_E,
+    h: ADC_A_H,
+    l: ADC_A_L
+);
+
+create_opcode_struct!(ADC_A_xHL);
+impl<M: Memory> OpExecute<M> for ADC_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let carry = registers.get_carry() as u8;
+        let sum = (Wrapping(a) + Wrapping(val) + Wrapping(carry)).0;
+        registers.set_zero(sum == 0);
+        registers.set_operation(false);
+        registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.a = sum;
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(ADC_A_N);
+impl<M: Memory> OpExecute<M> for ADC_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let carry = registers.get_carry() as u8;
+        let sum = (Wrapping(a) + Wrapping(self.b2) + Wrapping(carry)).0;
+        registers.set_zero(sum == 0);
+        registers.set_operation(false);
+        registers.set_halfcarry((sum & 0xF) < (a & 0xF));
+        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.a = sum;
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+
+
+
