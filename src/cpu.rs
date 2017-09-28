@@ -180,6 +180,75 @@ impl<M: Memory> Cpu<M> {
             0x8E => self.create_and_execute::<ADC_A_xHL>(opcode),
             0xCE => self.create_and_execute::<ADC_A_N>(opcode),
 
+            0x97 => self.create_and_execute::<SUB_A_A>(opcode),
+            0x90 => self.create_and_execute::<SUB_A_B>(opcode),
+            0x91 => self.create_and_execute::<SUB_A_C>(opcode),
+            0x92 => self.create_and_execute::<SUB_A_D>(opcode),
+            0x93 => self.create_and_execute::<SUB_A_E>(opcode),
+            0x94 => self.create_and_execute::<SUB_A_H>(opcode),
+            0x95 => self.create_and_execute::<SUB_A_L>(opcode),
+            0x96 => self.create_and_execute::<SUB_A_xHL>(opcode),
+            0xD6 => self.create_and_execute::<SUB_A_N>(opcode),
+
+            0x9F => self.create_and_execute::<SBC_A_A>(opcode),
+            0x98 => self.create_and_execute::<SBC_A_B>(opcode),
+            0x99 => self.create_and_execute::<SBC_A_C>(opcode),
+            0x9A => self.create_and_execute::<SBC_A_D>(opcode),
+            0x9B => self.create_and_execute::<SBC_A_E>(opcode),
+            0x9C => self.create_and_execute::<SBC_A_H>(opcode),
+            0x9D => self.create_and_execute::<SBC_A_L>(opcode),
+            0x9E => self.create_and_execute::<SBC_A_xHL>(opcode),
+            0xDE => self.create_and_execute::<SBC_A_N>(opcode),
+
+            0xA7 => self.create_and_execute::<AND_A_A>(opcode),
+            0xA0 => self.create_and_execute::<AND_A_B>(opcode),
+            0xA1 => self.create_and_execute::<AND_A_C>(opcode),
+            0xA2 => self.create_and_execute::<AND_A_D>(opcode),
+            0xA3 => self.create_and_execute::<AND_A_E>(opcode),
+            0xA4 => self.create_and_execute::<AND_A_H>(opcode),
+            0xA5 => self.create_and_execute::<AND_A_L>(opcode),
+            0xA6 => self.create_and_execute::<AND_A_xHL>(opcode),
+            0xE6 => self.create_and_execute::<AND_A_N>(opcode),
+
+            0xB7 => self.create_and_execute::<OR_A_A>(opcode),
+            0xB0 => self.create_and_execute::<OR_A_B>(opcode),
+            0xB1 => self.create_and_execute::<OR_A_C>(opcode),
+            0xB2 => self.create_and_execute::<OR_A_D>(opcode),
+            0xB3 => self.create_and_execute::<OR_A_E>(opcode),
+            0xB4 => self.create_and_execute::<OR_A_H>(opcode),
+            0xB5 => self.create_and_execute::<OR_A_L>(opcode),
+            0xB6 => self.create_and_execute::<OR_A_xHL>(opcode),
+            0xF6 => self.create_and_execute::<OR_A_N>(opcode),
+
+            0xAF => self.create_and_execute::<XOR_A_A>(opcode),
+            0xA8 => self.create_and_execute::<XOR_A_B>(opcode),
+            0xA9 => self.create_and_execute::<XOR_A_C>(opcode),
+            0xAA => self.create_and_execute::<XOR_A_D>(opcode),
+            0xAB => self.create_and_execute::<XOR_A_E>(opcode),
+            0xAC => self.create_and_execute::<XOR_A_H>(opcode),
+            0xAD => self.create_and_execute::<XOR_A_L>(opcode),
+            0xAE => self.create_and_execute::<XOR_A_xHL>(opcode),
+            0xEE => self.create_and_execute::<XOR_A_N>(opcode),
+
+            0xBF => self.create_and_execute::<CP_A>(opcode),
+            0xB8 => self.create_and_execute::<CP_B>(opcode),
+            0xB9 => self.create_and_execute::<CP_C>(opcode),
+            0xBA => self.create_and_execute::<CP_D>(opcode),
+            0xBB => self.create_and_execute::<CP_E>(opcode),
+            0xBC => self.create_and_execute::<CP_H>(opcode),
+            0xBD => self.create_and_execute::<CP_L>(opcode),
+            0xBE => self.create_and_execute::<CP_xHL>(opcode),
+            0xFE => self.create_and_execute::<CP_N>(opcode),
+
+            0x3C => self.create_and_execute::<INC_A>(opcode),
+            0x04 => self.create_and_execute::<INC_B>(opcode),
+            0x0C => self.create_and_execute::<INC_C>(opcode),
+            0x14 => self.create_and_execute::<INC_D>(opcode),
+            0x1C => self.create_and_execute::<INC_E>(opcode),
+            0x24 => self.create_and_execute::<INC_H>(opcode),
+            0x2C => self.create_and_execute::<INC_L>(opcode),
+            0x34 => self.create_and_execute::<INC_xHL>(opcode),
+
             x => panic!("Opcode unknown: {:X}", x),
         }
     }
@@ -294,6 +363,14 @@ fn decrement_register_pair(h: &mut u8, l: &mut u8) {
 fn increment_register_pair(h: &mut u8, l: &mut u8) {
     let value = to_u16(*h, *l) + 1;
     store_value_in_register_pair(value, h, l);
+}
+
+fn wrapping_add(a: u8, b: u8) -> u8 {
+    (Wrapping(a) + Wrapping(b)).0
+}
+
+fn wrapping_sub(a: u8, b: u8) -> u8 {
+    (Wrapping(a) - Wrapping(b)).0
 }
 
 macro_rules! create_opcode_struct {
@@ -708,7 +785,7 @@ macro_rules! add_a_r {
                 registers.set_zero(sum == 0);
                 registers.set_operation(false);
                 registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-                registers.set_carry((sum & 0xFF) < (a & 0xFF));
+                registers.set_carry(sum < a);
                 registers.a = sum;
                 registers.pc += 1;
                 registers.cycles_of_last_command = 4;
@@ -736,7 +813,7 @@ impl<M: Memory> OpExecute<M> for ADD_A_xHL {
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.set_carry(sum < a);
         registers.a = sum;
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -751,7 +828,7 @@ impl<M: Memory> OpExecute<M> for ADD_A_N {
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.set_carry(sum < a);
         registers.a = sum;
         registers.pc += 2;
         registers.cycles_of_last_command = 8;
@@ -771,7 +848,7 @@ macro_rules! adc_a_r {
                 registers.set_zero(sum == 0);
                 registers.set_operation(false);
                 registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-                registers.set_carry((sum & 0xFF) < (a & 0xFF));
+                registers.set_carry(sum < a);
                 registers.a = sum;
                 registers.pc += 1;
                 registers.cycles_of_last_command = 4;
@@ -800,7 +877,7 @@ impl<M: Memory> OpExecute<M> for ADC_A_xHL {
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.set_carry(sum < a);
         registers.a = sum;
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -816,12 +893,429 @@ impl<M: Memory> OpExecute<M> for ADC_A_N {
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
-        registers.set_carry((sum & 0xFF) < (a & 0xFF));
+        registers.set_carry(sum < a);
         registers.a = sum;
         registers.pc += 2;
         registers.cycles_of_last_command = 8;
     }
 }
+
+// Substract register from A
+macro_rules! sub_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let a = registers.a;
+                let r = registers.$reg;
+                let difference = (Wrapping(a) - Wrapping(r)).0;
+                registers.set_zero(difference == 0);
+                registers.set_operation(true);
+                registers.set_halfcarry((r & 0xF) <= (a & 0xF));
+                registers.set_carry(r <= a);
+                registers.a = difference;
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+sub_a_r!(
+    a: SUB_A_A,
+    b: SUB_A_B,
+    c: SUB_A_C,
+    d: SUB_A_D,
+    e: SUB_A_E,
+    h: SUB_A_H,
+    l: SUB_A_L
+);
+
+create_opcode_struct!(SUB_A_xHL);
+impl<M: Memory> OpExecute<M> for SUB_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let difference = (Wrapping(a) - Wrapping(val)).0;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val & 0xF) <= (a & 0xF));
+        registers.set_carry(val <= a);
+        registers.a = difference;
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(SUB_A_N);
+impl<M: Memory> OpExecute<M> for SUB_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let val = self.b2;
+        let difference = (Wrapping(a) - Wrapping(val)).0;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val & 0xF) <= (a & 0xF));
+        registers.set_carry(val <= a);
+        registers.a = difference;
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Subtract register + carry flag from A
+macro_rules! sbc_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let a = registers.a;
+                let r = registers.$reg;
+                let carry = registers.get_carry() as u8;
+                let difference = (Wrapping(a) - Wrapping(r) - Wrapping(carry)).0;
+                let r_plus_c = r as u16 + carry as u16;
+                registers.set_zero(difference == 0);
+                registers.set_operation(true);
+                registers.set_halfcarry((r_plus_c & 0xF) < ((a as u16) & 0xF));
+                registers.set_carry((r_plus_c) < (a as u16));
+                registers.a = difference;
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+sbc_a_r!(
+    a: SBC_A_A,
+    b: SBC_A_B,
+    c: SBC_A_C,
+    d: SBC_A_D,
+    e: SBC_A_E,
+    h: SBC_A_H,
+    l: SBC_A_L
+);
+
+create_opcode_struct!(SBC_A_xHL);
+impl<M: Memory> OpExecute<M> for SBC_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let carry = registers.get_carry() as u8;
+        let difference = (Wrapping(a) - Wrapping(val) - Wrapping(carry)).0;
+        let val_plus_c = val as u16 + carry as u16;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val_plus_c & 0xF) < ((a as u16) & 0xF));
+        registers.set_carry((val_plus_c) < (a as u16));
+        registers.a = difference;
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(SBC_A_N);
+impl<M: Memory> OpExecute<M> for SBC_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let val = self.b2;
+        let carry = registers.get_carry() as u8;
+        let difference = (Wrapping(a) - Wrapping(val) - Wrapping(carry)).0;
+        let val_plus_c = val as u16 + carry as u16;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val_plus_c & 0xF) < ((a as u16) & 0xF));
+        registers.set_carry((val_plus_c) < (a as u16));
+        registers.a = difference;
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Store logical AND of register and A in A
+macro_rules! and_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                registers.a &= registers.$reg;
+                let zero = registers.a == 0;
+                registers.set_zero(zero);
+                registers.set_operation(false);
+                registers.set_halfcarry(true);
+                registers.set_carry(false);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+and_a_r!(
+    a: AND_A_A,
+    b: AND_A_B,
+    c: AND_A_C,
+    d: AND_A_D,
+    e: AND_A_E,
+    h: AND_A_H,
+    l: AND_A_L
+);
+
+create_opcode_struct!(AND_A_xHL);
+impl<M: Memory> OpExecute<M> for AND_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        registers.a &= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(true);
+        registers.set_carry(false);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(AND_A_N);
+impl<M: Memory> OpExecute<M> for AND_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let val = self.b2;
+        registers.a &= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(true);
+        registers.set_carry(false);
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Store logical OR of register and A in A
+macro_rules! or_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                registers.a |= registers.$reg;
+                let zero = registers.a == 0;
+                registers.set_zero(zero);
+                registers.set_operation(false);
+                registers.set_halfcarry(false);
+                registers.set_carry(false);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+or_a_r!(
+    a: OR_A_A,
+    b: OR_A_B,
+    c: OR_A_C,
+    d: OR_A_D,
+    e: OR_A_E,
+    h: OR_A_H,
+    l: OR_A_L
+);
+
+create_opcode_struct!(OR_A_xHL);
+impl<M: Memory> OpExecute<M> for OR_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        registers.a |= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(false);
+        registers.set_carry(false);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(OR_A_N);
+impl<M: Memory> OpExecute<M> for OR_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let val = self.b2;
+        registers.a |= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(false);
+        registers.set_carry(false);
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Store logical XOR of register and A in A
+macro_rules! xor_a_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                registers.a ^= registers.$reg;
+                let zero = registers.a == 0;
+                registers.set_zero(zero);
+                registers.set_operation(false);
+                registers.set_halfcarry(false);
+                registers.set_carry(false);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+xor_a_r!(
+    a: XOR_A_A,
+    b: XOR_A_B,
+    c: XOR_A_C,
+    d: XOR_A_D,
+    e: XOR_A_E,
+    h: XOR_A_H,
+    l: XOR_A_L
+);
+
+create_opcode_struct!(XOR_A_xHL);
+impl<M: Memory> OpExecute<M> for XOR_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        registers.a ^= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(false);
+        registers.set_carry(false);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(XOR_A_N);
+impl<M: Memory> OpExecute<M> for XOR_A_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let val = self.b2;
+        registers.a ^= val;
+        let zero = registers.a == 0;
+        registers.set_zero(zero);
+        registers.set_operation(false);
+        registers.set_halfcarry(false);
+        registers.set_carry(false);
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Compare register with A
+macro_rules! cp_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let a = registers.a;
+                let r = registers.$reg;
+                let difference = (Wrapping(a) - Wrapping(r)).0;
+                registers.set_zero(difference == 0);
+                registers.set_operation(true);
+                registers.set_halfcarry((r & 0xF) <= (a & 0xF));
+                registers.set_carry(r <= a);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+cp_r!(
+    a: CP_A,
+    b: CP_B,
+    c: CP_C,
+    d: CP_D,
+    e: CP_E,
+    h: CP_H,
+    l: CP_L
+);
+
+create_opcode_struct!(CP_xHL);
+impl<M: Memory> OpExecute<M> for CP_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let difference = (Wrapping(a) - Wrapping(val)).0;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val & 0xF) <= (a & 0xF));
+        registers.set_carry(val <= a);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+create_opcode_struct!(CP_N);
+impl<M: Memory> OpExecute<M> for CP_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let a = registers.a;
+        let val = self.b2;
+        let difference = (Wrapping(a) - Wrapping(val)).0;
+        registers.set_zero(difference == 0);
+        registers.set_operation(true);
+        registers.set_halfcarry((val & 0xF) <= (a & 0xF));
+        registers.set_carry(val <= a);
+        registers.pc += 2;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Increment register
+macro_rules! inc_r {
+    ($($reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let val = registers.$reg;
+                let halfcarry = (val & 0xF) == 0xF;
+                registers.set_halfcarry(halfcarry);
+                let new_val = wrapping_add(val, 1);
+                registers.$reg = new_val;
+                registers.set_zero(new_val == 0);
+                registers.set_operation(false);
+                registers.pc += 1;
+                registers.cycles_of_last_command = 4;
+            }
+        }
+    )*}
+}
+inc_r!(
+    a: INC_A,
+    b: INC_B,
+    c: INC_C,
+    d: INC_D,
+    e: INC_E,
+    h: INC_H,
+    l: INC_L
+);
+
+create_opcode_struct!(INC_xHL);
+impl<M: Memory> OpExecute<M> for INC_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = to_u16(registers.h, registers.l);
+        let val = memory.read_byte(address);
+        let halfcarry = (val & 0xF) == 0xF;
+        registers.set_halfcarry(halfcarry);
+        let new_val = wrapping_add(val, 1);
+        memory.write_byte(address, new_val);
+        registers.set_zero(new_val == 0);
+        registers.set_operation(false);
+        registers.pc += 1;
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+
+
 
 
 
