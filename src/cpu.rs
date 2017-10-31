@@ -290,6 +290,19 @@ impl<M: Memory> Cpu<M> {
             0x0F => self.create_and_execute::<RRCA>(opcode),
             0x1F => self.create_and_execute::<RRA>(opcode),
 
+            0xC3 => self.create_and_execute::<JP_NN>(opcode),
+            0xC2 => self.create_and_execute::<JP_NZ_NN>(opcode),
+            0xCA => self.create_and_execute::<JP_Z_NN>(opcode),
+            0xD2 => self.create_and_execute::<JP_NC_NN>(opcode),
+            0xDA => self.create_and_execute::<JP_C_NN>(opcode),
+            0xE9 => self.create_and_execute::<JP_xHL>(opcode),
+
+            0x18 => self.create_and_execute::<JR_N>(opcode),
+            0x20 => self.create_and_execute::<JR_NZ_N>(opcode),
+            0x28 => self.create_and_execute::<JR_Z_N>(opcode),
+            0x30 => self.create_and_execute::<JR_NC_N>(opcode),
+            0x38 => self.create_and_execute::<JR_C_N>(opcode),
+
             0xCB => match opcode.b2 {
                 0x37 => self.create_and_execute::<SWAP_A>(opcode),
                 0x30 => self.create_and_execute::<SWAP_B>(opcode),
@@ -362,6 +375,222 @@ impl<M: Memory> Cpu<M> {
                 0x3C => self.create_and_execute::<SRL_H>(opcode),
                 0x3D => self.create_and_execute::<SRL_L>(opcode),
                 0x3E => self.create_and_execute::<SRL_xHL>(opcode),
+
+                0x47 => self.create_and_execute::<BIT_0_A>(opcode),
+                0x40 => self.create_and_execute::<BIT_0_B>(opcode),
+                0x41 => self.create_and_execute::<BIT_0_C>(opcode),
+                0x42 => self.create_and_execute::<BIT_0_D>(opcode),
+                0x43 => self.create_and_execute::<BIT_0_E>(opcode),
+                0x44 => self.create_and_execute::<BIT_0_H>(opcode),
+                0x45 => self.create_and_execute::<BIT_0_L>(opcode),
+                0x46 => self.create_and_execute::<BIT_0_xHL>(opcode),
+
+                0x4F => self.create_and_execute::<BIT_1_A>(opcode),
+                0x48 => self.create_and_execute::<BIT_1_B>(opcode),
+                0x49 => self.create_and_execute::<BIT_1_C>(opcode),
+                0x4A => self.create_and_execute::<BIT_1_D>(opcode),
+                0x4B => self.create_and_execute::<BIT_1_E>(opcode),
+                0x4C => self.create_and_execute::<BIT_1_H>(opcode),
+                0x4D => self.create_and_execute::<BIT_1_L>(opcode),
+                0x4E => self.create_and_execute::<BIT_1_xHL>(opcode),
+
+                0x57 => self.create_and_execute::<BIT_2_A>(opcode),
+                0x50 => self.create_and_execute::<BIT_2_B>(opcode),
+                0x51 => self.create_and_execute::<BIT_2_C>(opcode),
+                0x52 => self.create_and_execute::<BIT_2_D>(opcode),
+                0x53 => self.create_and_execute::<BIT_2_E>(opcode),
+                0x54 => self.create_and_execute::<BIT_2_H>(opcode),
+                0x55 => self.create_and_execute::<BIT_2_L>(opcode),
+                0x56 => self.create_and_execute::<BIT_2_xHL>(opcode),
+
+                0x5F => self.create_and_execute::<BIT_3_A>(opcode),
+                0x58 => self.create_and_execute::<BIT_3_B>(opcode),
+                0x59 => self.create_and_execute::<BIT_3_C>(opcode),
+                0x5A => self.create_and_execute::<BIT_3_D>(opcode),
+                0x5B => self.create_and_execute::<BIT_3_E>(opcode),
+                0x5C => self.create_and_execute::<BIT_3_H>(opcode),
+                0x5D => self.create_and_execute::<BIT_3_L>(opcode),
+                0x5E => self.create_and_execute::<BIT_3_xHL>(opcode),
+
+                0x67 => self.create_and_execute::<BIT_4_A>(opcode),
+                0x60 => self.create_and_execute::<BIT_4_B>(opcode),
+                0x61 => self.create_and_execute::<BIT_4_C>(opcode),
+                0x62 => self.create_and_execute::<BIT_4_D>(opcode),
+                0x63 => self.create_and_execute::<BIT_4_E>(opcode),
+                0x64 => self.create_and_execute::<BIT_4_H>(opcode),
+                0x65 => self.create_and_execute::<BIT_4_L>(opcode),
+                0x66 => self.create_and_execute::<BIT_4_xHL>(opcode),
+
+                0x6F => self.create_and_execute::<BIT_5_A>(opcode),
+                0x68 => self.create_and_execute::<BIT_5_B>(opcode),
+                0x69 => self.create_and_execute::<BIT_5_C>(opcode),
+                0x6A => self.create_and_execute::<BIT_5_D>(opcode),
+                0x6B => self.create_and_execute::<BIT_5_E>(opcode),
+                0x6C => self.create_and_execute::<BIT_5_H>(opcode),
+                0x6D => self.create_and_execute::<BIT_5_L>(opcode),
+                0x6E => self.create_and_execute::<BIT_5_xHL>(opcode),
+
+                0x77 => self.create_and_execute::<BIT_6_A>(opcode),
+                0x70 => self.create_and_execute::<BIT_6_B>(opcode),
+                0x71 => self.create_and_execute::<BIT_6_C>(opcode),
+                0x72 => self.create_and_execute::<BIT_6_D>(opcode),
+                0x73 => self.create_and_execute::<BIT_6_E>(opcode),
+                0x74 => self.create_and_execute::<BIT_6_H>(opcode),
+                0x75 => self.create_and_execute::<BIT_6_L>(opcode),
+                0x76 => self.create_and_execute::<BIT_6_xHL>(opcode),
+
+                0x7F => self.create_and_execute::<BIT_7_A>(opcode),
+                0x78 => self.create_and_execute::<BIT_7_B>(opcode),
+                0x79 => self.create_and_execute::<BIT_7_C>(opcode),
+                0x7A => self.create_and_execute::<BIT_7_D>(opcode),
+                0x7B => self.create_and_execute::<BIT_7_E>(opcode),
+                0x7C => self.create_and_execute::<BIT_7_H>(opcode),
+                0x7D => self.create_and_execute::<BIT_7_L>(opcode),
+                0x7E => self.create_and_execute::<BIT_7_xHL>(opcode),
+
+                0xC7 => self.create_and_execute::<SET_0_A>(opcode),
+                0xC0 => self.create_and_execute::<SET_0_B>(opcode),
+                0xC1 => self.create_and_execute::<SET_0_C>(opcode),
+                0xC2 => self.create_and_execute::<SET_0_D>(opcode),
+                0xC3 => self.create_and_execute::<SET_0_E>(opcode),
+                0xC4 => self.create_and_execute::<SET_0_H>(opcode),
+                0xC5 => self.create_and_execute::<SET_0_L>(opcode),
+                0xC6 => self.create_and_execute::<SET_0_xHL>(opcode),
+
+                0xCF => self.create_and_execute::<SET_1_A>(opcode),
+                0xC8 => self.create_and_execute::<SET_1_B>(opcode),
+                0xC9 => self.create_and_execute::<SET_1_C>(opcode),
+                0xCA => self.create_and_execute::<SET_1_D>(opcode),
+                0xCB => self.create_and_execute::<SET_1_E>(opcode),
+                0xCC => self.create_and_execute::<SET_1_H>(opcode),
+                0xCD => self.create_and_execute::<SET_1_L>(opcode),
+                0xCE => self.create_and_execute::<SET_1_xHL>(opcode),
+
+                0xD7 => self.create_and_execute::<SET_2_A>(opcode),
+                0xD0 => self.create_and_execute::<SET_2_B>(opcode),
+                0xD1 => self.create_and_execute::<SET_2_C>(opcode),
+                0xD2 => self.create_and_execute::<SET_2_D>(opcode),
+                0xD3 => self.create_and_execute::<SET_2_E>(opcode),
+                0xD4 => self.create_and_execute::<SET_2_H>(opcode),
+                0xD5 => self.create_and_execute::<SET_2_L>(opcode),
+                0xD6 => self.create_and_execute::<SET_2_xHL>(opcode),
+
+                0xDF => self.create_and_execute::<SET_3_A>(opcode),
+                0xD8 => self.create_and_execute::<SET_3_B>(opcode),
+                0xD9 => self.create_and_execute::<SET_3_C>(opcode),
+                0xDA => self.create_and_execute::<SET_3_D>(opcode),
+                0xDB => self.create_and_execute::<SET_3_E>(opcode),
+                0xDC => self.create_and_execute::<SET_3_H>(opcode),
+                0xDD => self.create_and_execute::<SET_3_L>(opcode),
+                0xDE => self.create_and_execute::<SET_3_xHL>(opcode),
+
+                0xE7 => self.create_and_execute::<SET_4_A>(opcode),
+                0xE0 => self.create_and_execute::<SET_4_B>(opcode),
+                0xE1 => self.create_and_execute::<SET_4_C>(opcode),
+                0xE2 => self.create_and_execute::<SET_4_D>(opcode),
+                0xE3 => self.create_and_execute::<SET_4_E>(opcode),
+                0xE4 => self.create_and_execute::<SET_4_H>(opcode),
+                0xE5 => self.create_and_execute::<SET_4_L>(opcode),
+                0xE6 => self.create_and_execute::<SET_4_xHL>(opcode),
+
+                0xEF => self.create_and_execute::<SET_5_A>(opcode),
+                0xE8 => self.create_and_execute::<SET_5_B>(opcode),
+                0xE9 => self.create_and_execute::<SET_5_C>(opcode),
+                0xEA => self.create_and_execute::<SET_5_D>(opcode),
+                0xEB => self.create_and_execute::<SET_5_E>(opcode),
+                0xEC => self.create_and_execute::<SET_5_H>(opcode),
+                0xED => self.create_and_execute::<SET_5_L>(opcode),
+                0xEE => self.create_and_execute::<SET_5_xHL>(opcode),
+
+                0xF7 => self.create_and_execute::<SET_6_A>(opcode),
+                0xF0 => self.create_and_execute::<SET_6_B>(opcode),
+                0xF1 => self.create_and_execute::<SET_6_C>(opcode),
+                0xF2 => self.create_and_execute::<SET_6_D>(opcode),
+                0xF3 => self.create_and_execute::<SET_6_E>(opcode),
+                0xF4 => self.create_and_execute::<SET_6_H>(opcode),
+                0xF5 => self.create_and_execute::<SET_6_L>(opcode),
+                0xF6 => self.create_and_execute::<SET_6_xHL>(opcode),
+
+                0xFF => self.create_and_execute::<SET_7_A>(opcode),
+                0xF8 => self.create_and_execute::<SET_7_B>(opcode),
+                0xF9 => self.create_and_execute::<SET_7_C>(opcode),
+                0xFA => self.create_and_execute::<SET_7_D>(opcode),
+                0xFB => self.create_and_execute::<SET_7_E>(opcode),
+                0xFC => self.create_and_execute::<SET_7_H>(opcode),
+                0xFD => self.create_and_execute::<SET_7_L>(opcode),
+                0xFE => self.create_and_execute::<SET_7_xHL>(opcode),
+
+                0x87 => self.create_and_execute::<RES_0_A>(opcode),
+                0x80 => self.create_and_execute::<RES_0_B>(opcode),
+                0x81 => self.create_and_execute::<RES_0_C>(opcode),
+                0x82 => self.create_and_execute::<RES_0_D>(opcode),
+                0x83 => self.create_and_execute::<RES_0_E>(opcode),
+                0x84 => self.create_and_execute::<RES_0_H>(opcode),
+                0x85 => self.create_and_execute::<RES_0_L>(opcode),
+                0x86 => self.create_and_execute::<RES_0_xHL>(opcode),
+
+                0x8F => self.create_and_execute::<RES_1_A>(opcode),
+                0x88 => self.create_and_execute::<RES_1_B>(opcode),
+                0x89 => self.create_and_execute::<RES_1_C>(opcode),
+                0x8A => self.create_and_execute::<RES_1_D>(opcode),
+                0x8B => self.create_and_execute::<RES_1_E>(opcode),
+                0x8C => self.create_and_execute::<RES_1_H>(opcode),
+                0x8D => self.create_and_execute::<RES_1_L>(opcode),
+                0x8E => self.create_and_execute::<RES_1_xHL>(opcode),
+
+                0x97 => self.create_and_execute::<RES_2_A>(opcode),
+                0x90 => self.create_and_execute::<RES_2_B>(opcode),
+                0x91 => self.create_and_execute::<RES_2_C>(opcode),
+                0x92 => self.create_and_execute::<RES_2_D>(opcode),
+                0x93 => self.create_and_execute::<RES_2_E>(opcode),
+                0x94 => self.create_and_execute::<RES_2_H>(opcode),
+                0x95 => self.create_and_execute::<RES_2_L>(opcode),
+                0x96 => self.create_and_execute::<RES_2_xHL>(opcode),
+
+                0x9F => self.create_and_execute::<RES_3_A>(opcode),
+                0x98 => self.create_and_execute::<RES_3_B>(opcode),
+                0x99 => self.create_and_execute::<RES_3_C>(opcode),
+                0x9A => self.create_and_execute::<RES_3_D>(opcode),
+                0x9B => self.create_and_execute::<RES_3_E>(opcode),
+                0x9C => self.create_and_execute::<RES_3_H>(opcode),
+                0x9D => self.create_and_execute::<RES_3_L>(opcode),
+                0x9E => self.create_and_execute::<RES_3_xHL>(opcode),
+
+                0xA7 => self.create_and_execute::<RES_4_A>(opcode),
+                0xA0 => self.create_and_execute::<RES_4_B>(opcode),
+                0xA1 => self.create_and_execute::<RES_4_C>(opcode),
+                0xA2 => self.create_and_execute::<RES_4_D>(opcode),
+                0xA3 => self.create_and_execute::<RES_4_E>(opcode),
+                0xA4 => self.create_and_execute::<RES_4_H>(opcode),
+                0xA5 => self.create_and_execute::<RES_4_L>(opcode),
+                0xA6 => self.create_and_execute::<RES_4_xHL>(opcode),
+
+                0xAF => self.create_and_execute::<RES_5_A>(opcode),
+                0xA8 => self.create_and_execute::<RES_5_B>(opcode),
+                0xA9 => self.create_and_execute::<RES_5_C>(opcode),
+                0xAA => self.create_and_execute::<RES_5_D>(opcode),
+                0xAB => self.create_and_execute::<RES_5_E>(opcode),
+                0xAC => self.create_and_execute::<RES_5_H>(opcode),
+                0xAD => self.create_and_execute::<RES_5_L>(opcode),
+                0xAE => self.create_and_execute::<RES_5_xHL>(opcode),
+
+                0xB7 => self.create_and_execute::<RES_6_A>(opcode),
+                0xB0 => self.create_and_execute::<RES_6_B>(opcode),
+                0xB1 => self.create_and_execute::<RES_6_C>(opcode),
+                0xB2 => self.create_and_execute::<RES_6_D>(opcode),
+                0xB3 => self.create_and_execute::<RES_6_E>(opcode),
+                0xB4 => self.create_and_execute::<RES_6_H>(opcode),
+                0xB5 => self.create_and_execute::<RES_6_L>(opcode),
+                0xB6 => self.create_and_execute::<RES_6_xHL>(opcode),
+
+                0xBF => self.create_and_execute::<RES_7_A>(opcode),
+                0xB8 => self.create_and_execute::<RES_7_B>(opcode),
+                0xB9 => self.create_and_execute::<RES_7_C>(opcode),
+                0xBA => self.create_and_execute::<RES_7_D>(opcode),
+                0xBB => self.create_and_execute::<RES_7_E>(opcode),
+                0xBC => self.create_and_execute::<RES_7_H>(opcode),
+                0xBD => self.create_and_execute::<RES_7_L>(opcode),
+                0xBE => self.create_and_execute::<RES_7_xHL>(opcode),
 
                 x => panic!("Opcode unknown: 0xCB {:X}", x),
             },
@@ -2161,3 +2390,453 @@ impl<M: Memory> OpExecute<M> for SRL_xHL {
         registers.cycles_of_last_command = 16;
     }
 }
+
+// Test bit b in register r
+macro_rules! bit_b_r {
+    ($($bit:expr, $reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let reg = registers.$reg;
+                let bit = (0x1 << $bit) & reg != 0;
+                registers.set_zero(!bit);
+                registers.set_operation(false);
+                registers.set_halfcarry(true);
+                registers.pc += 2;
+                registers.cycles_of_last_command = 8;
+            }
+        }
+    )*}
+}
+bit_b_r!(
+    0, a: BIT_0_A,
+    0, b: BIT_0_B,
+    0, c: BIT_0_C,
+    0, d: BIT_0_D,
+    0, e: BIT_0_E,
+    0, h: BIT_0_H,
+    0, l: BIT_0_L,
+    1, a: BIT_1_A,
+    1, b: BIT_1_B,
+    1, c: BIT_1_C,
+    1, d: BIT_1_D,
+    1, e: BIT_1_E,
+    1, h: BIT_1_H,
+    1, l: BIT_1_L,
+    2, a: BIT_2_A,
+    2, b: BIT_2_B,
+    2, c: BIT_2_C,
+    2, d: BIT_2_D,
+    2, e: BIT_2_E,
+    2, h: BIT_2_H,
+    2, l: BIT_2_L,
+    3, a: BIT_3_A,
+    3, b: BIT_3_B,
+    3, c: BIT_3_C,
+    3, d: BIT_3_D,
+    3, e: BIT_3_E,
+    3, h: BIT_3_H,
+    3, l: BIT_3_L,
+    4, a: BIT_4_A,
+    4, b: BIT_4_B,
+    4, c: BIT_4_C,
+    4, d: BIT_4_D,
+    4, e: BIT_4_E,
+    4, h: BIT_4_H,
+    4, l: BIT_4_L,
+    5, a: BIT_5_A,
+    5, b: BIT_5_B,
+    5, c: BIT_5_C,
+    5, d: BIT_5_D,
+    5, e: BIT_5_E,
+    5, h: BIT_5_H,
+    5, l: BIT_5_L,
+    6, a: BIT_6_A,
+    6, b: BIT_6_B,
+    6, c: BIT_6_C,
+    6, d: BIT_6_D,
+    6, e: BIT_6_E,
+    6, h: BIT_6_H,
+    6, l: BIT_6_L,
+    7, a: BIT_7_A,
+    7, b: BIT_7_B,
+    7, c: BIT_7_C,
+    7, d: BIT_7_D,
+    7, e: BIT_7_E,
+    7, h: BIT_7_H,
+    7, l: BIT_7_L
+);
+
+macro_rules! bit_b_hl {
+    ($($bit:expr, $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                let address = to_u16(registers.h, registers.l);
+                let reg = memory.read_byte(address);
+                let bit = (0x1 << $bit) & reg != 0;
+                registers.set_zero(!bit);
+                registers.set_operation(false);
+                registers.set_halfcarry(true);
+                registers.pc += 2;
+                registers.cycles_of_last_command = 16;
+            }
+        }
+    )*}
+}
+bit_b_hl!(
+    0, BIT_0_xHL,
+    1, BIT_1_xHL,
+    2, BIT_2_xHL,
+    3, BIT_3_xHL,
+    4, BIT_4_xHL,
+    5, BIT_5_xHL,
+    6, BIT_6_xHL,
+    7, BIT_7_xHL
+);
+
+// Set bit b in register r
+macro_rules! set_b_r {
+    ($($bit:expr, $reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let val = registers.$reg;
+                let bit = 0x1 << $bit;
+                let new_val = val | bit;
+                registers.$reg = new_val;
+                registers.pc += 2;
+                registers.cycles_of_last_command = 8;
+            }
+        }
+    )*}
+}
+set_b_r!(
+    0, a: SET_0_A,
+    0, b: SET_0_B,
+    0, c: SET_0_C,
+    0, d: SET_0_D,
+    0, e: SET_0_E,
+    0, h: SET_0_H,
+    0, l: SET_0_L,
+    1, a: SET_1_A,
+    1, b: SET_1_B,
+    1, c: SET_1_C,
+    1, d: SET_1_D,
+    1, e: SET_1_E,
+    1, h: SET_1_H,
+    1, l: SET_1_L,
+    2, a: SET_2_A,
+    2, b: SET_2_B,
+    2, c: SET_2_C,
+    2, d: SET_2_D,
+    2, e: SET_2_E,
+    2, h: SET_2_H,
+    2, l: SET_2_L,
+    3, a: SET_3_A,
+    3, b: SET_3_B,
+    3, c: SET_3_C,
+    3, d: SET_3_D,
+    3, e: SET_3_E,
+    3, h: SET_3_H,
+    3, l: SET_3_L,
+    4, a: SET_4_A,
+    4, b: SET_4_B,
+    4, c: SET_4_C,
+    4, d: SET_4_D,
+    4, e: SET_4_E,
+    4, h: SET_4_H,
+    4, l: SET_4_L,
+    5, a: SET_5_A,
+    5, b: SET_5_B,
+    5, c: SET_5_C,
+    5, d: SET_5_D,
+    5, e: SET_5_E,
+    5, h: SET_5_H,
+    5, l: SET_5_L,
+    6, a: SET_6_A,
+    6, b: SET_6_B,
+    6, c: SET_6_C,
+    6, d: SET_6_D,
+    6, e: SET_6_E,
+    6, h: SET_6_H,
+    6, l: SET_6_L,
+    7, a: SET_7_A,
+    7, b: SET_7_B,
+    7, c: SET_7_C,
+    7, d: SET_7_D,
+    7, e: SET_7_E,
+    7, h: SET_7_H,
+    7, l: SET_7_L
+);
+
+macro_rules! set_b_hl {
+    ($($bit:expr, $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                let address = to_u16(registers.h, registers.l);
+                let val = memory.read_byte(address);
+                let bit = 0x1 << $bit;
+                let new_val = val | bit;
+                memory.write_byte(address, new_val);
+                registers.pc += 2;
+                registers.cycles_of_last_command = 16;
+            }
+        }
+    )*}
+}
+set_b_hl!(
+    0, SET_0_xHL,
+    1, SET_1_xHL,
+    2, SET_2_xHL,
+    3, SET_3_xHL,
+    4, SET_4_xHL,
+    5, SET_5_xHL,
+    6, SET_6_xHL,
+    7, SET_7_xHL
+);
+
+// Reset bit b in register r
+macro_rules! res_b_r {
+    ($($bit:expr, $reg:ident : $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+                let val = registers.$reg;
+                let bit = 0x1 << $bit;
+                let new_val = val & !bit;
+                registers.$reg = new_val;
+                registers.pc += 2;
+                registers.cycles_of_last_command = 8;
+            }
+        }
+    )*}
+}
+res_b_r!(
+    0, a: RES_0_A,
+    0, b: RES_0_B,
+    0, c: RES_0_C,
+    0, d: RES_0_D,
+    0, e: RES_0_E,
+    0, h: RES_0_H,
+    0, l: RES_0_L,
+    1, a: RES_1_A,
+    1, b: RES_1_B,
+    1, c: RES_1_C,
+    1, d: RES_1_D,
+    1, e: RES_1_E,
+    1, h: RES_1_H,
+    1, l: RES_1_L,
+    2, a: RES_2_A,
+    2, b: RES_2_B,
+    2, c: RES_2_C,
+    2, d: RES_2_D,
+    2, e: RES_2_E,
+    2, h: RES_2_H,
+    2, l: RES_2_L,
+    3, a: RES_3_A,
+    3, b: RES_3_B,
+    3, c: RES_3_C,
+    3, d: RES_3_D,
+    3, e: RES_3_E,
+    3, h: RES_3_H,
+    3, l: RES_3_L,
+    4, a: RES_4_A,
+    4, b: RES_4_B,
+    4, c: RES_4_C,
+    4, d: RES_4_D,
+    4, e: RES_4_E,
+    4, h: RES_4_H,
+    4, l: RES_4_L,
+    5, a: RES_5_A,
+    5, b: RES_5_B,
+    5, c: RES_5_C,
+    5, d: RES_5_D,
+    5, e: RES_5_E,
+    5, h: RES_5_H,
+    5, l: RES_5_L,
+    6, a: RES_6_A,
+    6, b: RES_6_B,
+    6, c: RES_6_C,
+    6, d: RES_6_D,
+    6, e: RES_6_E,
+    6, h: RES_6_H,
+    6, l: RES_6_L,
+    7, a: RES_7_A,
+    7, b: RES_7_B,
+    7, c: RES_7_C,
+    7, d: RES_7_D,
+    7, e: RES_7_E,
+    7, h: RES_7_H,
+    7, l: RES_7_L
+);
+
+macro_rules! res_b_hl {
+    ($($bit:expr, $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                let address = to_u16(registers.h, registers.l);
+                let val = memory.read_byte(address);
+                let bit = 0x1 << $bit;
+                let new_val = val & !bit;
+                memory.write_byte(address, new_val);
+                registers.pc += 2;
+                registers.cycles_of_last_command = 16;
+            }
+        }
+    )*}
+}
+res_b_hl!(
+    0, RES_0_xHL,
+    1, RES_1_xHL,
+    2, RES_2_xHL,
+    3, RES_3_xHL,
+    4, RES_4_xHL,
+    5, RES_5_xHL,
+    6, RES_6_xHL,
+    7, RES_7_xHL
+);
+
+// Jump to address nn
+create_opcode_struct!(JP_NN);
+impl<M: Memory> OpExecute<M> for JP_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        let address = to_u16(self.b3, self.b2);
+        registers.pc = address;
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Jump to address nn if Z flag is reset
+create_opcode_struct!(JP_NZ_NN);
+impl<M: Memory> OpExecute<M> for JP_NZ_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if !registers.get_zero() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Jump to address nn if Z flag is set
+create_opcode_struct!(JP_Z_NN);
+impl<M: Memory> OpExecute<M> for JP_Z_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if registers.get_zero() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Jump to address nn if C flag is reset
+create_opcode_struct!(JP_NC_NN);
+impl<M: Memory> OpExecute<M> for JP_NC_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if !registers.get_carry() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Jump to address nn if C flag is set
+create_opcode_struct!(JP_C_NN);
+impl<M: Memory> OpExecute<M> for JP_C_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if registers.get_carry() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Jump to address in HL
+create_opcode_struct!(JP_xHL);
+impl<M: Memory> OpExecute<M> for JP_xHL {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        let address = to_u16(registers.h, registers.l);
+        registers.pc = address;
+        registers.cycles_of_last_command = 4;
+    }
+}
+
+// Jump to n + current address
+create_opcode_struct!(JR_N);
+impl<M: Memory> OpExecute<M> for JR_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Jump to n + current address if Z flag is reset
+create_opcode_struct!(JR_NZ_N);
+impl<M: Memory> OpExecute<M> for JR_NZ_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if !registers.get_zero() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
+        } else {
+            registers.pc += 2;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Jump to n + current address if Z flag is set
+create_opcode_struct!(JR_Z_N);
+impl<M: Memory> OpExecute<M> for JR_Z_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if registers.get_zero() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
+        } else {
+            registers.pc += 2;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Jump to n + current address if C flag is reset
+create_opcode_struct!(JR_NC_N);
+impl<M: Memory> OpExecute<M> for JR_NC_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if !registers.get_carry() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
+        } else {
+            registers.pc += 2;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Jump to n + current address if C flag is set
+create_opcode_struct!(JR_C_N);
+impl<M: Memory> OpExecute<M> for JR_C_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        if registers.get_carry() {
+        let address = to_u16(self.b3, self.b2);
+            registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
+        } else {
+            registers.pc += 2;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
