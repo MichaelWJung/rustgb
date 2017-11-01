@@ -2810,7 +2810,6 @@ create_opcode_struct!(JR_NZ_N);
 impl<M: Memory> OpExecute<M> for JR_NZ_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         if !registers.get_zero() {
-        let address = to_u16(self.b3, self.b2);
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2824,7 +2823,6 @@ create_opcode_struct!(JR_Z_N);
 impl<M: Memory> OpExecute<M> for JR_Z_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         if registers.get_zero() {
-        let address = to_u16(self.b3, self.b2);
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2838,7 +2836,6 @@ create_opcode_struct!(JR_NC_N);
 impl<M: Memory> OpExecute<M> for JR_NC_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         if !registers.get_carry() {
-        let address = to_u16(self.b3, self.b2);
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2852,7 +2849,6 @@ create_opcode_struct!(JR_C_N);
 impl<M: Memory> OpExecute<M> for JR_C_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         if registers.get_carry() {
-        let address = to_u16(self.b3, self.b2);
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
