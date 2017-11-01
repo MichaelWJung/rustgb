@@ -1197,7 +1197,7 @@ impl<M: Memory> OpExecute<M> for ADD_A_xHL {
 
 create_opcode_struct!(ADD_A_N);
 impl<M: Memory> OpExecute<M> for ADD_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let a = registers.a;
         let sum = (Wrapping(a) + Wrapping(self.b2)).0;
         registers.set_zero(sum == 0);
@@ -1261,7 +1261,7 @@ impl<M: Memory> OpExecute<M> for ADC_A_xHL {
 
 create_opcode_struct!(ADC_A_N);
 impl<M: Memory> OpExecute<M> for ADC_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let a = registers.a;
         let carry = registers.get_carry() as u8;
         let sum = (Wrapping(a) + Wrapping(self.b2) + Wrapping(carry)).0;
@@ -1324,7 +1324,7 @@ impl<M: Memory> OpExecute<M> for SUB_A_xHL {
 
 create_opcode_struct!(SUB_A_N);
 impl<M: Memory> OpExecute<M> for SUB_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
@@ -1391,7 +1391,7 @@ impl<M: Memory> OpExecute<M> for SBC_A_xHL {
 
 create_opcode_struct!(SBC_A_N);
 impl<M: Memory> OpExecute<M> for SBC_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let a = registers.a;
         let val = self.b2;
         let carry = registers.get_carry() as u8;
@@ -1453,7 +1453,7 @@ impl<M: Memory> OpExecute<M> for AND_A_xHL {
 
 create_opcode_struct!(AND_A_N);
 impl<M: Memory> OpExecute<M> for AND_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let val = self.b2;
         registers.a &= val;
         let zero = registers.a == 0;
@@ -1512,7 +1512,7 @@ impl<M: Memory> OpExecute<M> for OR_A_xHL {
 
 create_opcode_struct!(OR_A_N);
 impl<M: Memory> OpExecute<M> for OR_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let val = self.b2;
         registers.a |= val;
         let zero = registers.a == 0;
@@ -1571,7 +1571,7 @@ impl<M: Memory> OpExecute<M> for XOR_A_xHL {
 
 create_opcode_struct!(XOR_A_N);
 impl<M: Memory> OpExecute<M> for XOR_A_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let val = self.b2;
         registers.a ^= val;
         let zero = registers.a == 0;
@@ -1631,7 +1631,7 @@ impl<M: Memory> OpExecute<M> for CP_xHL {
 
 create_opcode_struct!(CP_N);
 impl<M: Memory> OpExecute<M> for CP_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
