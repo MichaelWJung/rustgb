@@ -303,6 +303,27 @@ impl<M: Memory> Cpu<M> {
             0x30 => self.create_and_execute::<JR_NC_N>(opcode),
             0x38 => self.create_and_execute::<JR_C_N>(opcode),
 
+            0xCD => self.create_and_execute::<CALL_NN>(opcode),
+            0xC4 => self.create_and_execute::<CALL_NZ_NN>(opcode),
+            0xCC => self.create_and_execute::<CALL_Z_NN>(opcode),
+            0xD4 => self.create_and_execute::<CALL_NC_NN>(opcode),
+            0xDC => self.create_and_execute::<CALL_C_NN>(opcode),
+
+            0xC7 => self.create_and_execute::<RST_0x00>(opcode),
+            0xCF => self.create_and_execute::<RST_0x08>(opcode),
+            0xD7 => self.create_and_execute::<RST_0x10>(opcode),
+            0xDF => self.create_and_execute::<RST_0x18>(opcode),
+            0xE7 => self.create_and_execute::<RST_0x20>(opcode),
+            0xEF => self.create_and_execute::<RST_0x28>(opcode),
+            0xF7 => self.create_and_execute::<RST_0x30>(opcode),
+            0xFF => self.create_and_execute::<RST_0x38>(opcode),
+
+            0xC9 => self.create_and_execute::<RET>(opcode),
+            0xC0 => self.create_and_execute::<RET_NZ>(opcode),
+            0xC8 => self.create_and_execute::<RET_Z>(opcode),
+            0xD0 => self.create_and_execute::<RET_NC>(opcode),
+            0xD8 => self.create_and_execute::<RET_C>(opcode),
+
             0xCB => match opcode.b2 {
                 0x37 => self.create_and_execute::<SWAP_A>(opcode),
                 0x30 => self.create_and_execute::<SWAP_B>(opcode),
@@ -2840,3 +2861,185 @@ impl<M: Memory> OpExecute<M> for JR_C_N {
     }
 }
 
+// Push address of next instruction onto stack and then jump to address nn
+create_opcode_struct!(CALL_NN);
+impl<M: Memory> OpExecute<M> for CALL_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        memory.write_word(registers.sp - 1, registers.pc + 3);
+        registers.sp -= 2;
+        let address = to_u16(self.b3, self.b2);
+        registers.pc = address;
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Call address nn if Z flag is reset
+create_opcode_struct!(CALL_NZ_NN);
+impl<M: Memory> OpExecute<M> for CALL_NZ_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if !registers.get_zero() {
+            memory.write_word(registers.sp - 1, registers.pc + 3);
+            registers.sp -= 2;
+            let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Call address nn if Z flag is set
+create_opcode_struct!(CALL_Z_NN);
+impl<M: Memory> OpExecute<M> for CALL_Z_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if registers.get_zero() {
+            memory.write_word(registers.sp - 1, registers.pc + 3);
+            registers.sp -= 2;
+            let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Call address nn if C flag is reset
+create_opcode_struct!(CALL_NC_NN);
+impl<M: Memory> OpExecute<M> for CALL_NC_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if !registers.get_carry() {
+            memory.write_word(registers.sp - 1, registers.pc + 3);
+            registers.sp -= 2;
+            let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+// Call address nn if C flag is set
+create_opcode_struct!(CALL_C_NN);
+impl<M: Memory> OpExecute<M> for CALL_C_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if registers.get_carry() {
+            memory.write_word(registers.sp - 1, registers.pc + 3);
+            registers.sp -= 2;
+            let address = to_u16(self.b3, self.b2);
+            registers.pc = address;
+        } else {
+            registers.pc += 3;
+        }
+        registers.cycles_of_last_command = 12;
+    }
+}
+
+macro_rules! rst_n {
+    ($($address:expr, $name:ident),*) => {$(
+        create_opcode_struct!($name);
+        impl<M: Memory> OpExecute<M> for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+                memory.write_word(registers.sp - 1, registers.pc + 1);
+                registers.sp -= 2;
+                registers.pc = $address;
+                registers.cycles_of_last_command = 32;
+            }
+        }
+    )*}
+}
+rst_n!(
+    0x00, RST_0x00,
+    0x08, RST_0x08,
+    0x10, RST_0x10,
+    0x18, RST_0x18,
+    0x20, RST_0x20,
+    0x28, RST_0x28,
+    0x30, RST_0x30,
+    0x38, RST_0x38
+);
+
+// Return
+create_opcode_struct!(RET);
+impl<M: Memory> OpExecute<M> for RET {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        let address = memory.read_word(registers.sp + 1);
+        registers.sp += 2;
+        registers.pc = address;
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Return if Z flag is reset
+create_opcode_struct!(RET_NZ);
+impl<M: Memory> OpExecute<M> for RET_NZ {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if !registers.get_zero() {
+            let address = memory.read_word(registers.sp + 1);
+            registers.sp += 2;
+            registers.pc = address;
+        } else {
+            registers.pc += 1;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Return if Z flag is set
+create_opcode_struct!(RET_Z);
+impl<M: Memory> OpExecute<M> for RET_Z {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if registers.get_zero() {
+            let address = memory.read_word(registers.sp + 1);
+            registers.sp += 2;
+            registers.pc = address;
+        } else {
+            registers.pc += 1;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Return if C flag is reset
+create_opcode_struct!(RET_NC);
+impl<M: Memory> OpExecute<M> for RET_NC {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if !registers.get_carry() {
+            let address = memory.read_word(registers.sp + 1);
+            registers.sp += 2;
+            registers.pc = address;
+        } else {
+            registers.pc += 1;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Return if C flag is set
+create_opcode_struct!(RET_C);
+impl<M: Memory> OpExecute<M> for RET_C {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        if registers.get_carry() {
+            let address = memory.read_word(registers.sp + 1);
+            registers.sp += 2;
+            registers.pc = address;
+        } else {
+            registers.pc += 1;
+        }
+        registers.cycles_of_last_command = 8;
+    }
+}
+
+// Return, then enable interrupts
+create_opcode_struct!(RETI);
+impl<M: Memory> OpExecute<M> for RETI {
+    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        //TODO: Implement
+        let address = memory.read_word(registers.sp + 1);
+        registers.sp += 2;
+        registers.pc = address;
+        registers.cycles_of_last_command = 8;
+    }
+}
