@@ -1,13 +1,14 @@
 use memory::Memory;
+use memory::BlockMemory;
 use std::num::Wrapping;
 
-pub struct Cpu<M: Memory> {
+pub struct Cpu {
     registers: Registers,
-    memory: M,
+    memory: BlockMemory,
 }
 
-impl<M: Memory> Cpu<M> {
-    pub fn new(memory: M) -> Cpu<M> {
+impl Cpu {
+    pub fn new(memory: BlockMemory) -> Cpu {
         Cpu {
             registers: Registers::new(),
             memory,
@@ -41,589 +42,539 @@ impl<M: Memory> Cpu<M> {
     }
 
     fn execute_opcode(&mut self, opcode: Opcode) {
-        match opcode.b1 {
-            0x3E => self.create_and_execute::<LD_A_N>(opcode),
-            0x06 => self.create_and_execute::<LD_B_N>(opcode),
-            0x0E => self.create_and_execute::<LD_C_N>(opcode),
-            0x16 => self.create_and_execute::<LD_D_N>(opcode),
-            0x1E => self.create_and_execute::<LD_E_N>(opcode),
-            0x26 => self.create_and_execute::<LD_H_N>(opcode),
-            0x2E => self.create_and_execute::<LD_L_N>(opcode),
-
-            0x7F => self.create_and_execute::<LD_A_A>(opcode),
-            0x78 => self.create_and_execute::<LD_A_B>(opcode),
-            0x79 => self.create_and_execute::<LD_A_C>(opcode),
-            0x7A => self.create_and_execute::<LD_A_D>(opcode),
-            0x7B => self.create_and_execute::<LD_A_E>(opcode),
-            0x7C => self.create_and_execute::<LD_A_H>(opcode),
-            0x7D => self.create_and_execute::<LD_A_L>(opcode),
-
-            0x47 => self.create_and_execute::<LD_B_A>(opcode),
-            0x40 => self.create_and_execute::<LD_B_B>(opcode),
-            0x41 => self.create_and_execute::<LD_B_C>(opcode),
-            0x42 => self.create_and_execute::<LD_B_D>(opcode),
-            0x43 => self.create_and_execute::<LD_B_E>(opcode),
-            0x44 => self.create_and_execute::<LD_B_H>(opcode),
-            0x45 => self.create_and_execute::<LD_B_L>(opcode),
-
-            0x4F => self.create_and_execute::<LD_C_A>(opcode),
-            0x48 => self.create_and_execute::<LD_C_B>(opcode),
-            0x49 => self.create_and_execute::<LD_C_C>(opcode),
-            0x4A => self.create_and_execute::<LD_C_D>(opcode),
-            0x4B => self.create_and_execute::<LD_C_E>(opcode),
-            0x4C => self.create_and_execute::<LD_C_H>(opcode),
-            0x4D => self.create_and_execute::<LD_C_L>(opcode),
-
-            0x57 => self.create_and_execute::<LD_D_A>(opcode),
-            0x50 => self.create_and_execute::<LD_D_B>(opcode),
-            0x51 => self.create_and_execute::<LD_D_C>(opcode),
-            0x52 => self.create_and_execute::<LD_D_D>(opcode),
-            0x53 => self.create_and_execute::<LD_D_E>(opcode),
-            0x54 => self.create_and_execute::<LD_D_H>(opcode),
-            0x55 => self.create_and_execute::<LD_D_L>(opcode),
-
-            0x5F => self.create_and_execute::<LD_E_A>(opcode),
-            0x58 => self.create_and_execute::<LD_E_B>(opcode),
-            0x59 => self.create_and_execute::<LD_E_C>(opcode),
-            0x5A => self.create_and_execute::<LD_E_D>(opcode),
-            0x5B => self.create_and_execute::<LD_E_E>(opcode),
-            0x5C => self.create_and_execute::<LD_E_H>(opcode),
-            0x5D => self.create_and_execute::<LD_E_L>(opcode),
-
-            0x67 => self.create_and_execute::<LD_H_A>(opcode),
-            0x60 => self.create_and_execute::<LD_H_B>(opcode),
-            0x61 => self.create_and_execute::<LD_H_C>(opcode),
-            0x62 => self.create_and_execute::<LD_H_D>(opcode),
-            0x63 => self.create_and_execute::<LD_H_E>(opcode),
-            0x64 => self.create_and_execute::<LD_H_H>(opcode),
-            0x65 => self.create_and_execute::<LD_H_L>(opcode),
-
-            0x6F => self.create_and_execute::<LD_L_A>(opcode),
-            0x68 => self.create_and_execute::<LD_L_B>(opcode),
-            0x69 => self.create_and_execute::<LD_L_C>(opcode),
-            0x6A => self.create_and_execute::<LD_L_D>(opcode),
-            0x6B => self.create_and_execute::<LD_L_E>(opcode),
-            0x6C => self.create_and_execute::<LD_L_H>(opcode),
-            0x6D => self.create_and_execute::<LD_L_L>(opcode),
-
-            0x7E => self.create_and_execute::<LD_A_xHL>(opcode),
-            0x46 => self.create_and_execute::<LD_B_xHL>(opcode),
-            0x4E => self.create_and_execute::<LD_C_xHL>(opcode),
-            0x56 => self.create_and_execute::<LD_D_xHL>(opcode),
-            0x5E => self.create_and_execute::<LD_E_xHL>(opcode),
-            0x66 => self.create_and_execute::<LD_H_xHL>(opcode),
-            0x6E => self.create_and_execute::<LD_L_xHL>(opcode),
-            0x0A => self.create_and_execute::<LD_A_xBC>(opcode),
-            0x1A => self.create_and_execute::<LD_A_xDE>(opcode),
-
-            0x70 => self.create_and_execute::<LD_xHL_B>(opcode),
-            0x71 => self.create_and_execute::<LD_xHL_C>(opcode),
-            0x72 => self.create_and_execute::<LD_xHL_D>(opcode),
-            0x73 => self.create_and_execute::<LD_xHL_E>(opcode),
-            0x74 => self.create_and_execute::<LD_xHL_H>(opcode),
-            0x75 => self.create_and_execute::<LD_xHL_L>(opcode),
-            0x02 => self.create_and_execute::<LD_xBC_A>(opcode),
-            0x12 => self.create_and_execute::<LD_xDE_A>(opcode),
-
-            0x36 => self.create_and_execute::<LD_xHL_N>(opcode),
-
-            0xFA => self.create_and_execute::<LD_A_xNN>(opcode),
-
-            0xF2 => self.create_and_execute::<LDH_A_xC>(opcode),
-            0xE2 => self.create_and_execute::<LDH_xC_A>(opcode),
-
-            0x3A => self.create_and_execute::<LDD_A_xHL>(opcode),
-            0x32 => self.create_and_execute::<LDD_xHL_A>(opcode),
-
-            0x2A => self.create_and_execute::<LDI_A_xHL>(opcode),
-            0x22 => self.create_and_execute::<LDI_xHL_A>(opcode),
-
-            0xF0 => self.create_and_execute::<LDH_A_xN>(opcode),
-            0xE0 => self.create_and_execute::<LDH_xN_A>(opcode),
-
-            0x01 => self.create_and_execute::<LD_BC_NN>(opcode),
-            0x11 => self.create_and_execute::<LD_DE_NN>(opcode),
-            0x21 => self.create_and_execute::<LD_HL_NN>(opcode),
-
-            0x31 => self.create_and_execute::<LD_SP_NN>(opcode),
-            0xF9 => self.create_and_execute::<LD_SP_HL>(opcode),
-            0xF8 => self.create_and_execute::<LDHL_SP_N>(opcode),
-            0x08 => self.create_and_execute::<LD_xNN_SP>(opcode),
-
-            0xF5 => self.create_and_execute::<PUSH_AF>(opcode),
-            0xC5 => self.create_and_execute::<PUSH_BC>(opcode),
-            0xD5 => self.create_and_execute::<PUSH_DE>(opcode),
-            0xE5 => self.create_and_execute::<PUSH_HL>(opcode),
-
-            0xF1 => self.create_and_execute::<POP_AF>(opcode),
-            0xC1 => self.create_and_execute::<POP_BC>(opcode),
-            0xD1 => self.create_and_execute::<POP_DE>(opcode),
-            0xE1 => self.create_and_execute::<POP_HL>(opcode),
-
-            0x87 => self.create_and_execute::<ADD_A_A>(opcode),
-            0x80 => self.create_and_execute::<ADD_A_B>(opcode),
-            0x81 => self.create_and_execute::<ADD_A_C>(opcode),
-            0x82 => self.create_and_execute::<ADD_A_D>(opcode),
-            0x83 => self.create_and_execute::<ADD_A_E>(opcode),
-            0x84 => self.create_and_execute::<ADD_A_H>(opcode),
-            0x85 => self.create_and_execute::<ADD_A_L>(opcode),
-            0x86 => self.create_and_execute::<ADD_A_xHL>(opcode),
-            0xC6 => self.create_and_execute::<ADD_A_N>(opcode),
-
-            0x8F => self.create_and_execute::<ADC_A_A>(opcode),
-            0x88 => self.create_and_execute::<ADC_A_B>(opcode),
-            0x89 => self.create_and_execute::<ADC_A_C>(opcode),
-            0x8A => self.create_and_execute::<ADC_A_D>(opcode),
-            0x8B => self.create_and_execute::<ADC_A_E>(opcode),
-            0x8C => self.create_and_execute::<ADC_A_H>(opcode),
-            0x8D => self.create_and_execute::<ADC_A_L>(opcode),
-            0x8E => self.create_and_execute::<ADC_A_xHL>(opcode),
-            0xCE => self.create_and_execute::<ADC_A_N>(opcode),
-
-            0x97 => self.create_and_execute::<SUB_A_A>(opcode),
-            0x90 => self.create_and_execute::<SUB_A_B>(opcode),
-            0x91 => self.create_and_execute::<SUB_A_C>(opcode),
-            0x92 => self.create_and_execute::<SUB_A_D>(opcode),
-            0x93 => self.create_and_execute::<SUB_A_E>(opcode),
-            0x94 => self.create_and_execute::<SUB_A_H>(opcode),
-            0x95 => self.create_and_execute::<SUB_A_L>(opcode),
-            0x96 => self.create_and_execute::<SUB_A_xHL>(opcode),
-            0xD6 => self.create_and_execute::<SUB_A_N>(opcode),
-
-            0x9F => self.create_and_execute::<SBC_A_A>(opcode),
-            0x98 => self.create_and_execute::<SBC_A_B>(opcode),
-            0x99 => self.create_and_execute::<SBC_A_C>(opcode),
-            0x9A => self.create_and_execute::<SBC_A_D>(opcode),
-            0x9B => self.create_and_execute::<SBC_A_E>(opcode),
-            0x9C => self.create_and_execute::<SBC_A_H>(opcode),
-            0x9D => self.create_and_execute::<SBC_A_L>(opcode),
-            0x9E => self.create_and_execute::<SBC_A_xHL>(opcode),
-            0xDE => self.create_and_execute::<SBC_A_N>(opcode),
-
-            0xA7 => self.create_and_execute::<AND_A_A>(opcode),
-            0xA0 => self.create_and_execute::<AND_A_B>(opcode),
-            0xA1 => self.create_and_execute::<AND_A_C>(opcode),
-            0xA2 => self.create_and_execute::<AND_A_D>(opcode),
-            0xA3 => self.create_and_execute::<AND_A_E>(opcode),
-            0xA4 => self.create_and_execute::<AND_A_H>(opcode),
-            0xA5 => self.create_and_execute::<AND_A_L>(opcode),
-            0xA6 => self.create_and_execute::<AND_A_xHL>(opcode),
-            0xE6 => self.create_and_execute::<AND_A_N>(opcode),
-
-            0xB7 => self.create_and_execute::<OR_A_A>(opcode),
-            0xB0 => self.create_and_execute::<OR_A_B>(opcode),
-            0xB1 => self.create_and_execute::<OR_A_C>(opcode),
-            0xB2 => self.create_and_execute::<OR_A_D>(opcode),
-            0xB3 => self.create_and_execute::<OR_A_E>(opcode),
-            0xB4 => self.create_and_execute::<OR_A_H>(opcode),
-            0xB5 => self.create_and_execute::<OR_A_L>(opcode),
-            0xB6 => self.create_and_execute::<OR_A_xHL>(opcode),
-            0xF6 => self.create_and_execute::<OR_A_N>(opcode),
-
-            0xAF => self.create_and_execute::<XOR_A_A>(opcode),
-            0xA8 => self.create_and_execute::<XOR_A_B>(opcode),
-            0xA9 => self.create_and_execute::<XOR_A_C>(opcode),
-            0xAA => self.create_and_execute::<XOR_A_D>(opcode),
-            0xAB => self.create_and_execute::<XOR_A_E>(opcode),
-            0xAC => self.create_and_execute::<XOR_A_H>(opcode),
-            0xAD => self.create_and_execute::<XOR_A_L>(opcode),
-            0xAE => self.create_and_execute::<XOR_A_xHL>(opcode),
-            0xEE => self.create_and_execute::<XOR_A_N>(opcode),
-
-            0xBF => self.create_and_execute::<CP_A>(opcode),
-            0xB8 => self.create_and_execute::<CP_B>(opcode),
-            0xB9 => self.create_and_execute::<CP_C>(opcode),
-            0xBA => self.create_and_execute::<CP_D>(opcode),
-            0xBB => self.create_and_execute::<CP_E>(opcode),
-            0xBC => self.create_and_execute::<CP_H>(opcode),
-            0xBD => self.create_and_execute::<CP_L>(opcode),
-            0xBE => self.create_and_execute::<CP_xHL>(opcode),
-            0xFE => self.create_and_execute::<CP_N>(opcode),
-
-            0x3C => self.create_and_execute::<INC_A>(opcode),
-            0x04 => self.create_and_execute::<INC_B>(opcode),
-            0x0C => self.create_and_execute::<INC_C>(opcode),
-            0x14 => self.create_and_execute::<INC_D>(opcode),
-            0x1C => self.create_and_execute::<INC_E>(opcode),
-            0x24 => self.create_and_execute::<INC_H>(opcode),
-            0x2C => self.create_and_execute::<INC_L>(opcode),
-            0x34 => self.create_and_execute::<INC_xHL>(opcode),
-
-            0x3D => self.create_and_execute::<DEC_A>(opcode),
-            0x05 => self.create_and_execute::<DEC_B>(opcode),
-            0x0D => self.create_and_execute::<DEC_C>(opcode),
-            0x15 => self.create_and_execute::<DEC_D>(opcode),
-            0x1D => self.create_and_execute::<DEC_E>(opcode),
-            0x25 => self.create_and_execute::<DEC_H>(opcode),
-            0x2D => self.create_and_execute::<DEC_L>(opcode),
-            0x35 => self.create_and_execute::<DEC_xHL>(opcode),
-
-            0x09 => self.create_and_execute::<ADD_HL_BC>(opcode),
-            0x19 => self.create_and_execute::<ADD_HL_DE>(opcode),
-            0x29 => self.create_and_execute::<ADD_HL_HL>(opcode),
-            0x39 => self.create_and_execute::<ADD_HL_SP>(opcode),
-
-            0xE8 => self.create_and_execute::<ADD_SP_N>(opcode),
-
-            0x03 => self.create_and_execute::<INC_BC>(opcode),
-            0x13 => self.create_and_execute::<INC_DE>(opcode),
-            0x23 => self.create_and_execute::<INC_HL>(opcode),
-            0x33 => self.create_and_execute::<INC_SP>(opcode),
-
-            0x0B => self.create_and_execute::<DEC_BC>(opcode),
-            0x1B => self.create_and_execute::<DEC_DE>(opcode),
-            0x2B => self.create_and_execute::<DEC_HL>(opcode),
-            0x3B => self.create_and_execute::<DEC_SP>(opcode),
-
-            0x27 => self.create_and_execute::<DAA>(opcode),
-            0x2F => self.create_and_execute::<CPL>(opcode),
-            0x3F => self.create_and_execute::<CCF>(opcode),
-            0x37 => self.create_and_execute::<SCF>(opcode),
-            0x00 => self.create_and_execute::<NOP>(opcode),
-            0x76 => self.create_and_execute::<HALT>(opcode),
-            0x10 if opcode.b2 == 0x00 => self.create_and_execute::<STOP>(opcode),
-            0xF3 => self.create_and_execute::<DI>(opcode),
-            0xFB => self.create_and_execute::<EI>(opcode),
-
-            0x07 => self.create_and_execute::<RLCA>(opcode),
-            0x17 => self.create_and_execute::<RLA>(opcode),
-            0x0F => self.create_and_execute::<RRCA>(opcode),
-            0x1F => self.create_and_execute::<RRA>(opcode),
-
-            0xC3 => self.create_and_execute::<JP_NN>(opcode),
-            0xC2 => self.create_and_execute::<JP_NZ_NN>(opcode),
-            0xCA => self.create_and_execute::<JP_Z_NN>(opcode),
-            0xD2 => self.create_and_execute::<JP_NC_NN>(opcode),
-            0xDA => self.create_and_execute::<JP_C_NN>(opcode),
-            0xE9 => self.create_and_execute::<JP_xHL>(opcode),
-
-            0x18 => self.create_and_execute::<JR_N>(opcode),
-            0x20 => self.create_and_execute::<JR_NZ_N>(opcode),
-            0x28 => self.create_and_execute::<JR_Z_N>(opcode),
-            0x30 => self.create_and_execute::<JR_NC_N>(opcode),
-            0x38 => self.create_and_execute::<JR_C_N>(opcode),
-
-            0xCD => self.create_and_execute::<CALL_NN>(opcode),
-            0xC4 => self.create_and_execute::<CALL_NZ_NN>(opcode),
-            0xCC => self.create_and_execute::<CALL_Z_NN>(opcode),
-            0xD4 => self.create_and_execute::<CALL_NC_NN>(opcode),
-            0xDC => self.create_and_execute::<CALL_C_NN>(opcode),
-
-            0xC7 => self.create_and_execute::<RST_0x00>(opcode),
-            0xCF => self.create_and_execute::<RST_0x08>(opcode),
-            0xD7 => self.create_and_execute::<RST_0x10>(opcode),
-            0xDF => self.create_and_execute::<RST_0x18>(opcode),
-            0xE7 => self.create_and_execute::<RST_0x20>(opcode),
-            0xEF => self.create_and_execute::<RST_0x28>(opcode),
-            0xF7 => self.create_and_execute::<RST_0x30>(opcode),
-            0xFF => self.create_and_execute::<RST_0x38>(opcode),
-
-            0xC9 => self.create_and_execute::<RET>(opcode),
-            0xC0 => self.create_and_execute::<RET_NZ>(opcode),
-            0xC8 => self.create_and_execute::<RET_Z>(opcode),
-            0xD0 => self.create_and_execute::<RET_NC>(opcode),
-            0xD8 => self.create_and_execute::<RET_C>(opcode),
-
-            0xCB => match opcode.b2 {
-                0x37 => self.create_and_execute::<SWAP_A>(opcode),
-                0x30 => self.create_and_execute::<SWAP_B>(opcode),
-                0x31 => self.create_and_execute::<SWAP_C>(opcode),
-                0x32 => self.create_and_execute::<SWAP_D>(opcode),
-                0x33 => self.create_and_execute::<SWAP_E>(opcode),
-                0x34 => self.create_and_execute::<SWAP_H>(opcode),
-                0x35 => self.create_and_execute::<SWAP_L>(opcode),
-                0x36 => self.create_and_execute::<SWAP_xHL>(opcode),
-
-                0x07 => self.create_and_execute::<RLC_A>(opcode),
-                0x00 => self.create_and_execute::<RLC_B>(opcode),
-                0x01 => self.create_and_execute::<RLC_C>(opcode),
-                0x02 => self.create_and_execute::<RLC_D>(opcode),
-                0x03 => self.create_and_execute::<RLC_E>(opcode),
-                0x04 => self.create_and_execute::<RLC_H>(opcode),
-                0x05 => self.create_and_execute::<RLC_L>(opcode),
-                0x06 => self.create_and_execute::<RLC_xHL>(opcode),
-
-                0x17 => self.create_and_execute::<RL_A>(opcode),
-                0x10 => self.create_and_execute::<RL_B>(opcode),
-                0x11 => self.create_and_execute::<RL_C>(opcode),
-                0x12 => self.create_and_execute::<RL_D>(opcode),
-                0x13 => self.create_and_execute::<RL_E>(opcode),
-                0x14 => self.create_and_execute::<RL_H>(opcode),
-                0x15 => self.create_and_execute::<RL_L>(opcode),
-                0x16 => self.create_and_execute::<RL_xHL>(opcode),
-
-                0x0F => self.create_and_execute::<RRC_A>(opcode),
-                0x08 => self.create_and_execute::<RRC_B>(opcode),
-                0x09 => self.create_and_execute::<RRC_C>(opcode),
-                0x0A => self.create_and_execute::<RRC_D>(opcode),
-                0x0B => self.create_and_execute::<RRC_E>(opcode),
-                0x0C => self.create_and_execute::<RRC_H>(opcode),
-                0x0D => self.create_and_execute::<RRC_L>(opcode),
-                0x0E => self.create_and_execute::<RRC_xHL>(opcode),
-
-                0x1F => self.create_and_execute::<RR_A>(opcode),
-                0x18 => self.create_and_execute::<RR_B>(opcode),
-                0x19 => self.create_and_execute::<RR_C>(opcode),
-                0x1A => self.create_and_execute::<RR_D>(opcode),
-                0x1B => self.create_and_execute::<RR_E>(opcode),
-                0x1C => self.create_and_execute::<RR_H>(opcode),
-                0x1D => self.create_and_execute::<RR_L>(opcode),
-                0x1E => self.create_and_execute::<RR_xHL>(opcode),
-
-                0x27 => self.create_and_execute::<SLA_A>(opcode),
-                0x20 => self.create_and_execute::<SLA_B>(opcode),
-                0x21 => self.create_and_execute::<SLA_C>(opcode),
-                0x22 => self.create_and_execute::<SLA_D>(opcode),
-                0x23 => self.create_and_execute::<SLA_E>(opcode),
-                0x24 => self.create_and_execute::<SLA_H>(opcode),
-                0x25 => self.create_and_execute::<SLA_L>(opcode),
-                0x26 => self.create_and_execute::<SLA_xHL>(opcode),
-
-                0x2F => self.create_and_execute::<SRA_A>(opcode),
-                0x28 => self.create_and_execute::<SRA_B>(opcode),
-                0x29 => self.create_and_execute::<SRA_C>(opcode),
-                0x2A => self.create_and_execute::<SRA_D>(opcode),
-                0x2B => self.create_and_execute::<SRA_E>(opcode),
-                0x2C => self.create_and_execute::<SRA_H>(opcode),
-                0x2D => self.create_and_execute::<SRA_L>(opcode),
-                0x2E => self.create_and_execute::<SRA_xHL>(opcode),
-
-                0x3F => self.create_and_execute::<SRL_A>(opcode),
-                0x38 => self.create_and_execute::<SRL_B>(opcode),
-                0x39 => self.create_and_execute::<SRL_C>(opcode),
-                0x3A => self.create_and_execute::<SRL_D>(opcode),
-                0x3B => self.create_and_execute::<SRL_E>(opcode),
-                0x3C => self.create_and_execute::<SRL_H>(opcode),
-                0x3D => self.create_and_execute::<SRL_L>(opcode),
-                0x3E => self.create_and_execute::<SRL_xHL>(opcode),
-
-                0x47 => self.create_and_execute::<BIT_0_A>(opcode),
-                0x40 => self.create_and_execute::<BIT_0_B>(opcode),
-                0x41 => self.create_and_execute::<BIT_0_C>(opcode),
-                0x42 => self.create_and_execute::<BIT_0_D>(opcode),
-                0x43 => self.create_and_execute::<BIT_0_E>(opcode),
-                0x44 => self.create_and_execute::<BIT_0_H>(opcode),
-                0x45 => self.create_and_execute::<BIT_0_L>(opcode),
-                0x46 => self.create_and_execute::<BIT_0_xHL>(opcode),
-
-                0x4F => self.create_and_execute::<BIT_1_A>(opcode),
-                0x48 => self.create_and_execute::<BIT_1_B>(opcode),
-                0x49 => self.create_and_execute::<BIT_1_C>(opcode),
-                0x4A => self.create_and_execute::<BIT_1_D>(opcode),
-                0x4B => self.create_and_execute::<BIT_1_E>(opcode),
-                0x4C => self.create_and_execute::<BIT_1_H>(opcode),
-                0x4D => self.create_and_execute::<BIT_1_L>(opcode),
-                0x4E => self.create_and_execute::<BIT_1_xHL>(opcode),
-
-                0x57 => self.create_and_execute::<BIT_2_A>(opcode),
-                0x50 => self.create_and_execute::<BIT_2_B>(opcode),
-                0x51 => self.create_and_execute::<BIT_2_C>(opcode),
-                0x52 => self.create_and_execute::<BIT_2_D>(opcode),
-                0x53 => self.create_and_execute::<BIT_2_E>(opcode),
-                0x54 => self.create_and_execute::<BIT_2_H>(opcode),
-                0x55 => self.create_and_execute::<BIT_2_L>(opcode),
-                0x56 => self.create_and_execute::<BIT_2_xHL>(opcode),
-
-                0x5F => self.create_and_execute::<BIT_3_A>(opcode),
-                0x58 => self.create_and_execute::<BIT_3_B>(opcode),
-                0x59 => self.create_and_execute::<BIT_3_C>(opcode),
-                0x5A => self.create_and_execute::<BIT_3_D>(opcode),
-                0x5B => self.create_and_execute::<BIT_3_E>(opcode),
-                0x5C => self.create_and_execute::<BIT_3_H>(opcode),
-                0x5D => self.create_and_execute::<BIT_3_L>(opcode),
-                0x5E => self.create_and_execute::<BIT_3_xHL>(opcode),
-
-                0x67 => self.create_and_execute::<BIT_4_A>(opcode),
-                0x60 => self.create_and_execute::<BIT_4_B>(opcode),
-                0x61 => self.create_and_execute::<BIT_4_C>(opcode),
-                0x62 => self.create_and_execute::<BIT_4_D>(opcode),
-                0x63 => self.create_and_execute::<BIT_4_E>(opcode),
-                0x64 => self.create_and_execute::<BIT_4_H>(opcode),
-                0x65 => self.create_and_execute::<BIT_4_L>(opcode),
-                0x66 => self.create_and_execute::<BIT_4_xHL>(opcode),
-
-                0x6F => self.create_and_execute::<BIT_5_A>(opcode),
-                0x68 => self.create_and_execute::<BIT_5_B>(opcode),
-                0x69 => self.create_and_execute::<BIT_5_C>(opcode),
-                0x6A => self.create_and_execute::<BIT_5_D>(opcode),
-                0x6B => self.create_and_execute::<BIT_5_E>(opcode),
-                0x6C => self.create_and_execute::<BIT_5_H>(opcode),
-                0x6D => self.create_and_execute::<BIT_5_L>(opcode),
-                0x6E => self.create_and_execute::<BIT_5_xHL>(opcode),
-
-                0x77 => self.create_and_execute::<BIT_6_A>(opcode),
-                0x70 => self.create_and_execute::<BIT_6_B>(opcode),
-                0x71 => self.create_and_execute::<BIT_6_C>(opcode),
-                0x72 => self.create_and_execute::<BIT_6_D>(opcode),
-                0x73 => self.create_and_execute::<BIT_6_E>(opcode),
-                0x74 => self.create_and_execute::<BIT_6_H>(opcode),
-                0x75 => self.create_and_execute::<BIT_6_L>(opcode),
-                0x76 => self.create_and_execute::<BIT_6_xHL>(opcode),
-
-                0x7F => self.create_and_execute::<BIT_7_A>(opcode),
-                0x78 => self.create_and_execute::<BIT_7_B>(opcode),
-                0x79 => self.create_and_execute::<BIT_7_C>(opcode),
-                0x7A => self.create_and_execute::<BIT_7_D>(opcode),
-                0x7B => self.create_and_execute::<BIT_7_E>(opcode),
-                0x7C => self.create_and_execute::<BIT_7_H>(opcode),
-                0x7D => self.create_and_execute::<BIT_7_L>(opcode),
-                0x7E => self.create_and_execute::<BIT_7_xHL>(opcode),
-
-                0xC7 => self.create_and_execute::<SET_0_A>(opcode),
-                0xC0 => self.create_and_execute::<SET_0_B>(opcode),
-                0xC1 => self.create_and_execute::<SET_0_C>(opcode),
-                0xC2 => self.create_and_execute::<SET_0_D>(opcode),
-                0xC3 => self.create_and_execute::<SET_0_E>(opcode),
-                0xC4 => self.create_and_execute::<SET_0_H>(opcode),
-                0xC5 => self.create_and_execute::<SET_0_L>(opcode),
-                0xC6 => self.create_and_execute::<SET_0_xHL>(opcode),
-
-                0xCF => self.create_and_execute::<SET_1_A>(opcode),
-                0xC8 => self.create_and_execute::<SET_1_B>(opcode),
-                0xC9 => self.create_and_execute::<SET_1_C>(opcode),
-                0xCA => self.create_and_execute::<SET_1_D>(opcode),
-                0xCB => self.create_and_execute::<SET_1_E>(opcode),
-                0xCC => self.create_and_execute::<SET_1_H>(opcode),
-                0xCD => self.create_and_execute::<SET_1_L>(opcode),
-                0xCE => self.create_and_execute::<SET_1_xHL>(opcode),
-
-                0xD7 => self.create_and_execute::<SET_2_A>(opcode),
-                0xD0 => self.create_and_execute::<SET_2_B>(opcode),
-                0xD1 => self.create_and_execute::<SET_2_C>(opcode),
-                0xD2 => self.create_and_execute::<SET_2_D>(opcode),
-                0xD3 => self.create_and_execute::<SET_2_E>(opcode),
-                0xD4 => self.create_and_execute::<SET_2_H>(opcode),
-                0xD5 => self.create_and_execute::<SET_2_L>(opcode),
-                0xD6 => self.create_and_execute::<SET_2_xHL>(opcode),
-
-                0xDF => self.create_and_execute::<SET_3_A>(opcode),
-                0xD8 => self.create_and_execute::<SET_3_B>(opcode),
-                0xD9 => self.create_and_execute::<SET_3_C>(opcode),
-                0xDA => self.create_and_execute::<SET_3_D>(opcode),
-                0xDB => self.create_and_execute::<SET_3_E>(opcode),
-                0xDC => self.create_and_execute::<SET_3_H>(opcode),
-                0xDD => self.create_and_execute::<SET_3_L>(opcode),
-                0xDE => self.create_and_execute::<SET_3_xHL>(opcode),
-
-                0xE7 => self.create_and_execute::<SET_4_A>(opcode),
-                0xE0 => self.create_and_execute::<SET_4_B>(opcode),
-                0xE1 => self.create_and_execute::<SET_4_C>(opcode),
-                0xE2 => self.create_and_execute::<SET_4_D>(opcode),
-                0xE3 => self.create_and_execute::<SET_4_E>(opcode),
-                0xE4 => self.create_and_execute::<SET_4_H>(opcode),
-                0xE5 => self.create_and_execute::<SET_4_L>(opcode),
-                0xE6 => self.create_and_execute::<SET_4_xHL>(opcode),
-
-                0xEF => self.create_and_execute::<SET_5_A>(opcode),
-                0xE8 => self.create_and_execute::<SET_5_B>(opcode),
-                0xE9 => self.create_and_execute::<SET_5_C>(opcode),
-                0xEA => self.create_and_execute::<SET_5_D>(opcode),
-                0xEB => self.create_and_execute::<SET_5_E>(opcode),
-                0xEC => self.create_and_execute::<SET_5_H>(opcode),
-                0xED => self.create_and_execute::<SET_5_L>(opcode),
-                0xEE => self.create_and_execute::<SET_5_xHL>(opcode),
-
-                0xF7 => self.create_and_execute::<SET_6_A>(opcode),
-                0xF0 => self.create_and_execute::<SET_6_B>(opcode),
-                0xF1 => self.create_and_execute::<SET_6_C>(opcode),
-                0xF2 => self.create_and_execute::<SET_6_D>(opcode),
-                0xF3 => self.create_and_execute::<SET_6_E>(opcode),
-                0xF4 => self.create_and_execute::<SET_6_H>(opcode),
-                0xF5 => self.create_and_execute::<SET_6_L>(opcode),
-                0xF6 => self.create_and_execute::<SET_6_xHL>(opcode),
-
-                0xFF => self.create_and_execute::<SET_7_A>(opcode),
-                0xF8 => self.create_and_execute::<SET_7_B>(opcode),
-                0xF9 => self.create_and_execute::<SET_7_C>(opcode),
-                0xFA => self.create_and_execute::<SET_7_D>(opcode),
-                0xFB => self.create_and_execute::<SET_7_E>(opcode),
-                0xFC => self.create_and_execute::<SET_7_H>(opcode),
-                0xFD => self.create_and_execute::<SET_7_L>(opcode),
-                0xFE => self.create_and_execute::<SET_7_xHL>(opcode),
-
-                0x87 => self.create_and_execute::<RES_0_A>(opcode),
-                0x80 => self.create_and_execute::<RES_0_B>(opcode),
-                0x81 => self.create_and_execute::<RES_0_C>(opcode),
-                0x82 => self.create_and_execute::<RES_0_D>(opcode),
-                0x83 => self.create_and_execute::<RES_0_E>(opcode),
-                0x84 => self.create_and_execute::<RES_0_H>(opcode),
-                0x85 => self.create_and_execute::<RES_0_L>(opcode),
-                0x86 => self.create_and_execute::<RES_0_xHL>(opcode),
-
-                0x8F => self.create_and_execute::<RES_1_A>(opcode),
-                0x88 => self.create_and_execute::<RES_1_B>(opcode),
-                0x89 => self.create_and_execute::<RES_1_C>(opcode),
-                0x8A => self.create_and_execute::<RES_1_D>(opcode),
-                0x8B => self.create_and_execute::<RES_1_E>(opcode),
-                0x8C => self.create_and_execute::<RES_1_H>(opcode),
-                0x8D => self.create_and_execute::<RES_1_L>(opcode),
-                0x8E => self.create_and_execute::<RES_1_xHL>(opcode),
-
-                0x97 => self.create_and_execute::<RES_2_A>(opcode),
-                0x90 => self.create_and_execute::<RES_2_B>(opcode),
-                0x91 => self.create_and_execute::<RES_2_C>(opcode),
-                0x92 => self.create_and_execute::<RES_2_D>(opcode),
-                0x93 => self.create_and_execute::<RES_2_E>(opcode),
-                0x94 => self.create_and_execute::<RES_2_H>(opcode),
-                0x95 => self.create_and_execute::<RES_2_L>(opcode),
-                0x96 => self.create_and_execute::<RES_2_xHL>(opcode),
-
-                0x9F => self.create_and_execute::<RES_3_A>(opcode),
-                0x98 => self.create_and_execute::<RES_3_B>(opcode),
-                0x99 => self.create_and_execute::<RES_3_C>(opcode),
-                0x9A => self.create_and_execute::<RES_3_D>(opcode),
-                0x9B => self.create_and_execute::<RES_3_E>(opcode),
-                0x9C => self.create_and_execute::<RES_3_H>(opcode),
-                0x9D => self.create_and_execute::<RES_3_L>(opcode),
-                0x9E => self.create_and_execute::<RES_3_xHL>(opcode),
-
-                0xA7 => self.create_and_execute::<RES_4_A>(opcode),
-                0xA0 => self.create_and_execute::<RES_4_B>(opcode),
-                0xA1 => self.create_and_execute::<RES_4_C>(opcode),
-                0xA2 => self.create_and_execute::<RES_4_D>(opcode),
-                0xA3 => self.create_and_execute::<RES_4_E>(opcode),
-                0xA4 => self.create_and_execute::<RES_4_H>(opcode),
-                0xA5 => self.create_and_execute::<RES_4_L>(opcode),
-                0xA6 => self.create_and_execute::<RES_4_xHL>(opcode),
-
-                0xAF => self.create_and_execute::<RES_5_A>(opcode),
-                0xA8 => self.create_and_execute::<RES_5_B>(opcode),
-                0xA9 => self.create_and_execute::<RES_5_C>(opcode),
-                0xAA => self.create_and_execute::<RES_5_D>(opcode),
-                0xAB => self.create_and_execute::<RES_5_E>(opcode),
-                0xAC => self.create_and_execute::<RES_5_H>(opcode),
-                0xAD => self.create_and_execute::<RES_5_L>(opcode),
-                0xAE => self.create_and_execute::<RES_5_xHL>(opcode),
-
-                0xB7 => self.create_and_execute::<RES_6_A>(opcode),
-                0xB0 => self.create_and_execute::<RES_6_B>(opcode),
-                0xB1 => self.create_and_execute::<RES_6_C>(opcode),
-                0xB2 => self.create_and_execute::<RES_6_D>(opcode),
-                0xB3 => self.create_and_execute::<RES_6_E>(opcode),
-                0xB4 => self.create_and_execute::<RES_6_H>(opcode),
-                0xB5 => self.create_and_execute::<RES_6_L>(opcode),
-                0xB6 => self.create_and_execute::<RES_6_xHL>(opcode),
-
-                0xBF => self.create_and_execute::<RES_7_A>(opcode),
-                0xB8 => self.create_and_execute::<RES_7_B>(opcode),
-                0xB9 => self.create_and_execute::<RES_7_C>(opcode),
-                0xBA => self.create_and_execute::<RES_7_D>(opcode),
-                0xBB => self.create_and_execute::<RES_7_E>(opcode),
-                0xBC => self.create_and_execute::<RES_7_H>(opcode),
-                0xBD => self.create_and_execute::<RES_7_L>(opcode),
-                0xBE => self.create_and_execute::<RES_7_xHL>(opcode),
-
-                x => panic!("Opcode unknown: 0xCB {:X}", x),
-            },
-
-            x => panic!("Opcode unknown: {:X}", x),
-        }
+        let opcode_function = OPCODE_MAP[opcode.b1 as usize];
+        opcode_function(opcode, &mut self.registers, &mut self.memory);
     }
+}
 
-    fn create_and_execute<Op: OpConstruct + OpExecute<M>>(&mut self, opcode: Opcode) {
-        let op = Op::new(opcode);
-        op.execute(&mut self.registers, &mut self.memory);
-    }
+static OPCODE_MAP: [fn(opcode:Opcode, registers: &mut Registers, memory: &mut BlockMemory); 256] =
+[
+    create_and_execute::<NOP>,             // 0x00
+    create_and_execute::<LD_BC_NN>,        // 0x01
+    create_and_execute::<LD_xBC_A>,        // 0x02
+    create_and_execute::<INC_BC>,          // 0x03
+    create_and_execute::<INC_B>,           // 0x04
+    create_and_execute::<DEC_B>,           // 0x05
+    create_and_execute::<LD_B_N>,          // 0x06
+    create_and_execute::<RLCA>,            // 0x07
+    create_and_execute::<LD_xNN_SP>,       // 0x08
+    create_and_execute::<ADD_HL_BC>,       // 0x09
+    create_and_execute::<LD_A_xBC>,        // 0x0A
+    create_and_execute::<DEC_BC>,          // 0x0B
+    create_and_execute::<INC_C>,           // 0x0C
+    create_and_execute::<DEC_C>,           // 0x0D
+    create_and_execute::<LD_C_N>,          // 0x0E
+    create_and_execute::<RRCA>,            // 0x0F
+    create_and_execute::<STOP>,            // 0x10
+    create_and_execute::<LD_DE_NN>,        // 0x11
+    create_and_execute::<LD_xDE_A>,        // 0x12
+    create_and_execute::<INC_DE>,          // 0x13
+    create_and_execute::<INC_D>,           // 0x14
+    create_and_execute::<DEC_D>,           // 0x15
+    create_and_execute::<LD_D_N>,          // 0x16
+    create_and_execute::<RLA>,             // 0x17
+    create_and_execute::<JR_N>,            // 0x18
+    create_and_execute::<ADD_HL_DE>,       // 0x19
+    create_and_execute::<LD_A_xDE>,        // 0x1A
+    create_and_execute::<DEC_DE>,          // 0x1B
+    create_and_execute::<INC_E>,           // 0x1C
+    create_and_execute::<DEC_E>,           // 0x1D
+    create_and_execute::<LD_E_N>,          // 0x1E
+    create_and_execute::<RRA>,             // 0x1F
+    create_and_execute::<JR_NZ_N>,         // 0x20
+    create_and_execute::<LD_HL_NN>,        // 0x21
+    create_and_execute::<LDI_xHL_A>,       // 0x22
+    create_and_execute::<INC_HL>,          // 0x23
+    create_and_execute::<INC_H>,           // 0x24
+    create_and_execute::<DEC_H>,           // 0x25
+    create_and_execute::<LD_H_N>,          // 0x26
+    create_and_execute::<DAA>,             // 0x27
+    create_and_execute::<JR_Z_N>,          // 0x28
+    create_and_execute::<ADD_HL_HL>,       // 0x29
+    create_and_execute::<LDI_A_xHL>,       // 0x2A
+    create_and_execute::<DEC_HL>,          // 0x2B
+    create_and_execute::<INC_L>,           // 0x2C
+    create_and_execute::<DEC_L>,           // 0x2D
+    create_and_execute::<LD_L_N>,          // 0x2E
+    create_and_execute::<CPL>,             // 0x2F
+    create_and_execute::<JR_NC_N>,         // 0x30
+    create_and_execute::<LD_SP_NN>,        // 0x31
+    create_and_execute::<LDD_xHL_A>,       // 0x32
+    create_and_execute::<INC_SP>,          // 0x33
+    create_and_execute::<INC_xHL>,         // 0x34
+    create_and_execute::<DEC_xHL>,         // 0x35
+    create_and_execute::<LD_xHL_N>,        // 0x36
+    create_and_execute::<SCF>,             // 0x37
+    create_and_execute::<JR_C_N>,          // 0x38
+    create_and_execute::<ADD_HL_SP>,       // 0x39
+    create_and_execute::<LDD_A_xHL>,       // 0x3A
+    create_and_execute::<DEC_SP>,          // 0x3B
+    create_and_execute::<INC_A>,           // 0x3C
+    create_and_execute::<DEC_A>,           // 0x3D
+    create_and_execute::<LD_A_N>,          // 0x3E
+    create_and_execute::<CCF>,             // 0x3F
+    create_and_execute::<LD_B_B>,          // 0x40
+    create_and_execute::<LD_B_C>,          // 0x41
+    create_and_execute::<LD_B_D>,          // 0x42
+    create_and_execute::<LD_B_E>,          // 0x43
+    create_and_execute::<LD_B_H>,          // 0x44
+    create_and_execute::<LD_B_L>,          // 0x45
+    create_and_execute::<LD_B_xHL>,        // 0x46
+    create_and_execute::<LD_B_A>,          // 0x47
+    create_and_execute::<LD_C_B>,          // 0x48
+    create_and_execute::<LD_C_C>,          // 0x49
+    create_and_execute::<LD_C_D>,          // 0x4A
+    create_and_execute::<LD_C_E>,          // 0x4B
+    create_and_execute::<LD_C_H>,          // 0x4C
+    create_and_execute::<LD_C_L>,          // 0x4D
+    create_and_execute::<LD_C_xHL>,        // 0x4E
+    create_and_execute::<LD_C_A>,          // 0x4F
+    create_and_execute::<LD_D_B>,          // 0x50
+    create_and_execute::<LD_D_C>,          // 0x51
+    create_and_execute::<LD_D_D>,          // 0x52
+    create_and_execute::<LD_D_E>,          // 0x53
+    create_and_execute::<LD_D_H>,          // 0x54
+    create_and_execute::<LD_D_L>,          // 0x55
+    create_and_execute::<LD_D_xHL>,        // 0x56
+    create_and_execute::<LD_D_A>,          // 0x57
+    create_and_execute::<LD_E_B>,          // 0x58
+    create_and_execute::<LD_E_C>,          // 0x59
+    create_and_execute::<LD_E_D>,          // 0x5A
+    create_and_execute::<LD_E_E>,          // 0x5B
+    create_and_execute::<LD_E_H>,          // 0x5C
+    create_and_execute::<LD_E_L>,          // 0x5D
+    create_and_execute::<LD_E_xHL>,        // 0x5E
+    create_and_execute::<LD_E_A>,          // 0x5F
+    create_and_execute::<LD_H_B>,          // 0x60
+    create_and_execute::<LD_H_C>,          // 0x61
+    create_and_execute::<LD_H_D>,          // 0x62
+    create_and_execute::<LD_H_E>,          // 0x63
+    create_and_execute::<LD_H_H>,          // 0x64
+    create_and_execute::<LD_H_L>,          // 0x65
+    create_and_execute::<LD_H_xHL>,        // 0x66
+    create_and_execute::<LD_H_A>,          // 0x67
+    create_and_execute::<LD_L_B>,          // 0x68
+    create_and_execute::<LD_L_C>,          // 0x69
+    create_and_execute::<LD_L_D>,          // 0x6A
+    create_and_execute::<LD_L_E>,          // 0x6B
+    create_and_execute::<LD_L_H>,          // 0x6C
+    create_and_execute::<LD_L_L>,          // 0x6D
+    create_and_execute::<LD_L_xHL>,        // 0x6E
+    create_and_execute::<LD_L_A>,          // 0x6F
+    create_and_execute::<LD_xHL_B>,        // 0x70
+    create_and_execute::<LD_xHL_C>,        // 0x71
+    create_and_execute::<LD_xHL_D>,        // 0x72
+    create_and_execute::<LD_xHL_E>,        // 0x73
+    create_and_execute::<LD_xHL_H>,        // 0x74
+    create_and_execute::<LD_xHL_L>,        // 0x75
+    create_and_execute::<HALT>,            // 0x76
+    create_and_execute::<LD_xHL_A>,        // 0x77
+    create_and_execute::<LD_A_B>,          // 0x78
+    create_and_execute::<LD_A_C>,          // 0x79
+    create_and_execute::<LD_A_D>,          // 0x7A
+    create_and_execute::<LD_A_E>,          // 0x7B
+    create_and_execute::<LD_A_H>,          // 0x7C
+    create_and_execute::<LD_A_L>,          // 0x7D
+    create_and_execute::<LD_A_xHL>,        // 0x7E
+    create_and_execute::<LD_A_A>,          // 0x7F
+    create_and_execute::<ADD_A_B>,         // 0x80
+    create_and_execute::<ADD_A_C>,         // 0x81
+    create_and_execute::<ADD_A_D>,         // 0x82
+    create_and_execute::<ADD_A_E>,         // 0x83
+    create_and_execute::<ADD_A_H>,         // 0x84
+    create_and_execute::<ADD_A_L>,         // 0x85
+    create_and_execute::<ADD_A_xHL>,       // 0x86
+    create_and_execute::<ADD_A_A>,         // 0x87
+    create_and_execute::<ADC_A_B>,         // 0x88
+    create_and_execute::<ADC_A_C>,         // 0x89
+    create_and_execute::<ADC_A_D>,         // 0x8A
+    create_and_execute::<ADC_A_E>,         // 0x8B
+    create_and_execute::<ADC_A_H>,         // 0x8C
+    create_and_execute::<ADC_A_L>,         // 0x8D
+    create_and_execute::<ADC_A_xHL>,       // 0x8E
+    create_and_execute::<ADC_A_A>,         // 0x8F
+    create_and_execute::<SUB_A_B>,         // 0x90
+    create_and_execute::<SUB_A_C>,         // 0x91
+    create_and_execute::<SUB_A_D>,         // 0x92
+    create_and_execute::<SUB_A_E>,         // 0x93
+    create_and_execute::<SUB_A_H>,         // 0x94
+    create_and_execute::<SUB_A_L>,         // 0x95
+    create_and_execute::<SUB_A_xHL>,       // 0x96
+    create_and_execute::<SUB_A_A>,         // 0x97
+    create_and_execute::<SBC_A_B>,         // 0x98
+    create_and_execute::<SBC_A_C>,         // 0x99
+    create_and_execute::<SBC_A_D>,         // 0x9A
+    create_and_execute::<SBC_A_E>,         // 0x9B
+    create_and_execute::<SBC_A_H>,         // 0x9C
+    create_and_execute::<SBC_A_L>,         // 0x9D
+    create_and_execute::<SBC_A_xHL>,       // 0x9E
+    create_and_execute::<SBC_A_A>,         // 0x9F
+    create_and_execute::<AND_A_B>,         // 0xA0
+    create_and_execute::<AND_A_C>,         // 0xA1
+    create_and_execute::<AND_A_D>,         // 0xA2
+    create_and_execute::<AND_A_E>,         // 0xA3
+    create_and_execute::<AND_A_H>,         // 0xA4
+    create_and_execute::<AND_A_L>,         // 0xA5
+    create_and_execute::<AND_A_xHL>,       // 0xA6
+    create_and_execute::<AND_A_A>,         // 0xA7
+    create_and_execute::<XOR_A_B>,         // 0xA8
+    create_and_execute::<XOR_A_C>,         // 0xA9
+    create_and_execute::<XOR_A_D>,         // 0xAA
+    create_and_execute::<XOR_A_E>,         // 0xAB
+    create_and_execute::<XOR_A_H>,         // 0xAC
+    create_and_execute::<XOR_A_L>,         // 0xAD
+    create_and_execute::<XOR_A_xHL>,       // 0xAE
+    create_and_execute::<XOR_A_A>,         // 0xAF
+    create_and_execute::<OR_A_B>,          // 0xB0
+    create_and_execute::<OR_A_C>,          // 0xB1
+    create_and_execute::<OR_A_D>,          // 0xB2
+    create_and_execute::<OR_A_E>,          // 0xB3
+    create_and_execute::<OR_A_H>,          // 0xB4
+    create_and_execute::<OR_A_L>,          // 0xB5
+    create_and_execute::<OR_A_xHL>,        // 0xB6
+    create_and_execute::<OR_A_A>,          // 0xB7
+    create_and_execute::<CP_B>,            // 0xB8
+    create_and_execute::<CP_C>,            // 0xB9
+    create_and_execute::<CP_D>,            // 0xBA
+    create_and_execute::<CP_E>,            // 0xBB
+    create_and_execute::<CP_H>,            // 0xBC
+    create_and_execute::<CP_L>,            // 0xBD
+    create_and_execute::<CP_xHL>,          // 0xBE
+    create_and_execute::<CP_A>,            // 0xBF
+    create_and_execute::<RET_NZ>,          // 0xC0
+    create_and_execute::<POP_BC>,          // 0xC1
+    create_and_execute::<JP_NZ_NN>,        // 0xC2
+    create_and_execute::<JP_NN>,           // 0xC3
+    create_and_execute::<CALL_NZ_NN>,      // 0xC4
+    create_and_execute::<PUSH_BC>,         // 0xC5
+    create_and_execute::<ADD_A_N>,         // 0xC6
+    create_and_execute::<RST_0x00>,        // 0xC7
+    create_and_execute::<RET_Z>,           // 0xC8
+    create_and_execute::<RET>,             // 0xC9
+    create_and_execute::<JP_Z_NN>,         // 0xCA
+    execute_extended_opcode,               // 0xCB
+    create_and_execute::<CALL_Z_NN>,       // 0xCC
+    create_and_execute::<CALL_NN>,         // 0xCD
+    create_and_execute::<ADC_A_N>,         // 0xCE
+    create_and_execute::<RST_0x08>,        // 0xCF
+    create_and_execute::<RET_NC>,          // 0xD0
+    create_and_execute::<POP_DE>,          // 0xD1
+    create_and_execute::<JP_NC_NN>,        // 0xD2
+    create_and_execute::<XX>,              // 0xD3
+    create_and_execute::<CALL_NC_NN>,      // 0xD4
+    create_and_execute::<PUSH_DE>,         // 0xD5
+    create_and_execute::<SUB_A_N>,         // 0xD6
+    create_and_execute::<RST_0x10>,        // 0xD7
+    create_and_execute::<RET_C>,           // 0xD8
+    create_and_execute::<RETI>,            // 0xD9
+    create_and_execute::<JP_C_NN>,         // 0xDA
+    create_and_execute::<XX>,              // 0xDB
+    create_and_execute::<CALL_C_NN>,       // 0xDC
+    create_and_execute::<XX>,              // 0xDD
+    create_and_execute::<SBC_A_N>,         // 0xDE
+    create_and_execute::<RST_0x18>,        // 0xDF
+    create_and_execute::<LDH_xN_A>,        // 0xE0
+    create_and_execute::<POP_HL>,          // 0xE1
+    create_and_execute::<LDH_xC_A>,        // 0xE2
+    create_and_execute::<XX>,              // 0xE3
+    create_and_execute::<XX>,              // 0xE4
+    create_and_execute::<PUSH_HL>,         // 0xE5
+    create_and_execute::<AND_A_N>,         // 0xE6
+    create_and_execute::<RST_0x20>,        // 0xE7
+    create_and_execute::<ADD_SP_N>,        // 0xE8
+    create_and_execute::<JP_xHL>,          // 0xE9
+    create_and_execute::<LD_xNN_A>,        // 0xEA
+    create_and_execute::<XX>,              // 0xEB
+    create_and_execute::<XX>,              // 0xEC
+    create_and_execute::<XX>,              // 0xED
+    create_and_execute::<XOR_A_N>,         // 0xEE
+    create_and_execute::<RST_0x28>,        // 0xEF
+    create_and_execute::<LDH_A_xN>,        // 0xF0
+    create_and_execute::<POP_AF>,          // 0xF1
+    create_and_execute::<LDH_A_xC>,        // 0xF2  removed???
+    create_and_execute::<DI>,              // 0xF3
+    create_and_execute::<XX>,              // 0xE4
+    create_and_execute::<PUSH_AF>,         // 0xF5
+    create_and_execute::<OR_A_N>,          // 0xF6
+    create_and_execute::<RST_0x30>,        // 0xF7
+    create_and_execute::<LDHL_SP_N>,       // 0xF8
+    create_and_execute::<LD_SP_HL>,        // 0xF9
+    create_and_execute::<LD_A_xNN>,        // 0xFA
+    create_and_execute::<EI>,              // 0xFB
+    create_and_execute::<XX>,              // 0xFC
+    create_and_execute::<XX>,              // 0xFD
+    create_and_execute::<CP_N>,            // 0xFE
+    create_and_execute::<RST_0x38>,        // 0xFF
+];
+
+static EXTENDED_OPCODE_MAP: [fn(opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory); 256] =
+[
+    create_and_execute::<RLC_B>,     // 0x00
+    create_and_execute::<RLC_C>,     // 0x01
+    create_and_execute::<RLC_D>,     // 0x02
+    create_and_execute::<RLC_E>,     // 0x03
+    create_and_execute::<RLC_H>,     // 0x04
+    create_and_execute::<RLC_L>,     // 0x05
+    create_and_execute::<RLC_xHL>,   // 0x06
+    create_and_execute::<RLC_A>,     // 0x07
+    create_and_execute::<RRC_B>,     // 0x08
+    create_and_execute::<RRC_C>,     // 0x09
+    create_and_execute::<RRC_D>,     // 0x0A
+    create_and_execute::<RRC_E>,     // 0x0B
+    create_and_execute::<RRC_H>,     // 0x0C
+    create_and_execute::<RRC_L>,     // 0x0D
+    create_and_execute::<RRC_xHL>,   // 0x0E
+    create_and_execute::<RRC_A>,     // 0x0F
+    create_and_execute::<RL_B>,      // 0x10
+    create_and_execute::<RL_C>,      // 0x11
+    create_and_execute::<RL_D>,      // 0x12
+    create_and_execute::<RL_E>,      // 0x13
+    create_and_execute::<RL_H>,      // 0x14
+    create_and_execute::<RL_L>,      // 0x15
+    create_and_execute::<RL_xHL>,    // 0x16
+    create_and_execute::<RL_A>,      // 0x17
+    create_and_execute::<RR_B>,      // 0x18
+    create_and_execute::<RR_C>,      // 0x19
+    create_and_execute::<RR_D>,      // 0x1A
+    create_and_execute::<RR_E>,      // 0x1B
+    create_and_execute::<RR_H>,      // 0x1C
+    create_and_execute::<RR_L>,      // 0x1D
+    create_and_execute::<RR_xHL>,    // 0x1E
+    create_and_execute::<RR_A>,      // 0x1F
+    create_and_execute::<SLA_B>,     // 0x20
+    create_and_execute::<SLA_C>,     // 0x21
+    create_and_execute::<SLA_D>,     // 0x22
+    create_and_execute::<SLA_E>,     // 0x23
+    create_and_execute::<SLA_H>,     // 0x24
+    create_and_execute::<SLA_L>,     // 0x25
+    create_and_execute::<SLA_xHL>,   // 0x26
+    create_and_execute::<SLA_A>,     // 0x27
+    create_and_execute::<SRA_B>,     // 0x28
+    create_and_execute::<SRA_C>,     // 0x29
+    create_and_execute::<SRA_D>,     // 0x2A
+    create_and_execute::<SRA_E>,     // 0x2B
+    create_and_execute::<SRA_H>,     // 0x2C
+    create_and_execute::<SRA_L>,     // 0x2D
+    create_and_execute::<SRA_xHL>,   // 0x2E
+    create_and_execute::<SRA_A>,     // 0x2F
+    create_and_execute::<SWAP_B>,    // 0x30
+    create_and_execute::<SWAP_C>,    // 0x31
+    create_and_execute::<SWAP_D>,    // 0x32
+    create_and_execute::<SWAP_E>,    // 0x33
+    create_and_execute::<SWAP_H>,    // 0x34
+    create_and_execute::<SWAP_L>,    // 0x35
+    create_and_execute::<SWAP_xHL>,  // 0x36
+    create_and_execute::<SWAP_A>,    // 0x37
+    create_and_execute::<SRL_B>,     // 0x38
+    create_and_execute::<SRL_C>,     // 0x39
+    create_and_execute::<SRL_D>,     // 0x3A
+    create_and_execute::<SRL_E>,     // 0x3B
+    create_and_execute::<SRL_H>,     // 0x3C
+    create_and_execute::<SRL_L>,     // 0x3D
+    create_and_execute::<SRL_xHL>,   // 0x3E
+    create_and_execute::<SRL_A>,     // 0x3F
+    create_and_execute::<BIT_0_B>,   // 0x40
+    create_and_execute::<BIT_0_C>,   // 0x41
+    create_and_execute::<BIT_0_D>,   // 0x42
+    create_and_execute::<BIT_0_E>,   // 0x43
+    create_and_execute::<BIT_0_H>,   // 0x44
+    create_and_execute::<BIT_0_L>,   // 0x45
+    create_and_execute::<BIT_0_xHL>, // 0x46
+    create_and_execute::<BIT_0_A>,   // 0x47
+    create_and_execute::<BIT_1_B>,   // 0x48
+    create_and_execute::<BIT_1_C>,   // 0x49
+    create_and_execute::<BIT_1_D>,   // 0x4A
+    create_and_execute::<BIT_1_E>,   // 0x4B
+    create_and_execute::<BIT_1_H>,   // 0x4C
+    create_and_execute::<BIT_1_L>,   // 0x4D
+    create_and_execute::<BIT_1_xHL>, // 0x4E
+    create_and_execute::<BIT_1_A>,   // 0x4F
+    create_and_execute::<BIT_2_B>,   // 0x50
+    create_and_execute::<BIT_2_C>,   // 0x51
+    create_and_execute::<BIT_2_D>,   // 0x52
+    create_and_execute::<BIT_2_E>,   // 0x53
+    create_and_execute::<BIT_2_H>,   // 0x54
+    create_and_execute::<BIT_2_L>,   // 0x55
+    create_and_execute::<BIT_2_xHL>, // 0x56
+    create_and_execute::<BIT_2_A>,   // 0x57
+    create_and_execute::<BIT_3_B>,   // 0x58
+    create_and_execute::<BIT_3_C>,   // 0x59
+    create_and_execute::<BIT_3_D>,   // 0x5A
+    create_and_execute::<BIT_3_E>,   // 0x5B
+    create_and_execute::<BIT_3_H>,   // 0x5C
+    create_and_execute::<BIT_3_L>,   // 0x5D
+    create_and_execute::<BIT_3_xHL>, // 0x5E
+    create_and_execute::<BIT_3_A>,   // 0x5F
+    create_and_execute::<BIT_4_B>,   // 0x60
+    create_and_execute::<BIT_4_C>,   // 0x61
+    create_and_execute::<BIT_4_D>,   // 0x62
+    create_and_execute::<BIT_4_E>,   // 0x63
+    create_and_execute::<BIT_4_H>,   // 0x64
+    create_and_execute::<BIT_4_L>,   // 0x65
+    create_and_execute::<BIT_4_xHL>, // 0x66
+    create_and_execute::<BIT_4_A>,   // 0x67
+    create_and_execute::<BIT_5_B>,   // 0x68
+    create_and_execute::<BIT_5_C>,   // 0x69
+    create_and_execute::<BIT_5_D>,   // 0x6A
+    create_and_execute::<BIT_5_E>,   // 0x6B
+    create_and_execute::<BIT_5_H>,   // 0x6C
+    create_and_execute::<BIT_5_L>,   // 0x6D
+    create_and_execute::<BIT_5_xHL>, // 0x6E
+    create_and_execute::<BIT_5_A>,   // 0x6F
+    create_and_execute::<BIT_6_B>,   // 0x70
+    create_and_execute::<BIT_6_C>,   // 0x71
+    create_and_execute::<BIT_6_D>,   // 0x72
+    create_and_execute::<BIT_6_E>,   // 0x73
+    create_and_execute::<BIT_6_H>,   // 0x74
+    create_and_execute::<BIT_6_L>,   // 0x75
+    create_and_execute::<BIT_6_xHL>, // 0x76
+    create_and_execute::<BIT_6_A>,   // 0x77
+    create_and_execute::<BIT_7_B>,   // 0x78
+    create_and_execute::<BIT_7_C>,   // 0x79
+    create_and_execute::<BIT_7_D>,   // 0x7A
+    create_and_execute::<BIT_7_E>,   // 0x7B
+    create_and_execute::<BIT_7_H>,   // 0x7C
+    create_and_execute::<BIT_7_L>,   // 0x7D
+    create_and_execute::<BIT_7_xHL>, // 0x7E
+    create_and_execute::<BIT_7_A>,   // 0x7F
+    create_and_execute::<RES_0_B>,   // 0x80
+    create_and_execute::<RES_0_C>,   // 0x81
+    create_and_execute::<RES_0_D>,   // 0x82
+    create_and_execute::<RES_0_E>,   // 0x83
+    create_and_execute::<RES_0_H>,   // 0x84
+    create_and_execute::<RES_0_L>,   // 0x85
+    create_and_execute::<RES_0_xHL>, // 0x86
+    create_and_execute::<RES_0_A>,   // 0x87
+    create_and_execute::<RES_1_B>,   // 0x88
+    create_and_execute::<RES_1_C>,   // 0x89
+    create_and_execute::<RES_1_D>,   // 0x8A
+    create_and_execute::<RES_1_E>,   // 0x8B
+    create_and_execute::<RES_1_H>,   // 0x8C
+    create_and_execute::<RES_1_L>,   // 0x8D
+    create_and_execute::<RES_1_xHL>, // 0x8E
+    create_and_execute::<RES_1_A>,   // 0x8F
+    create_and_execute::<RES_2_B>,   // 0x90
+    create_and_execute::<RES_2_C>,   // 0x91
+    create_and_execute::<RES_2_D>,   // 0x92
+    create_and_execute::<RES_2_E>,   // 0x93
+    create_and_execute::<RES_2_H>,   // 0x94
+    create_and_execute::<RES_2_L>,   // 0x95
+    create_and_execute::<RES_2_xHL>, // 0x96
+    create_and_execute::<RES_2_A>,   // 0x97
+    create_and_execute::<RES_3_B>,   // 0x98
+    create_and_execute::<RES_3_C>,   // 0x99
+    create_and_execute::<RES_3_D>,   // 0x9A
+    create_and_execute::<RES_3_E>,   // 0x9B
+    create_and_execute::<RES_3_H>,   // 0x9C
+    create_and_execute::<RES_3_L>,   // 0x9D
+    create_and_execute::<RES_3_xHL>, // 0x9E
+    create_and_execute::<RES_3_A>,   // 0x9F
+    create_and_execute::<RES_4_B>,   // 0xA0
+    create_and_execute::<RES_4_C>,   // 0xA1
+    create_and_execute::<RES_4_D>,   // 0xA2
+    create_and_execute::<RES_4_E>,   // 0xA3
+    create_and_execute::<RES_4_H>,   // 0xA4
+    create_and_execute::<RES_4_L>,   // 0xA5
+    create_and_execute::<RES_4_xHL>, // 0xA6
+    create_and_execute::<RES_4_A>,   // 0xA7
+    create_and_execute::<RES_5_B>,   // 0xA8
+    create_and_execute::<RES_5_C>,   // 0xA9
+    create_and_execute::<RES_5_D>,   // 0xAA
+    create_and_execute::<RES_5_E>,   // 0xAB
+    create_and_execute::<RES_5_H>,   // 0xAC
+    create_and_execute::<RES_5_L>,   // 0xAD
+    create_and_execute::<RES_5_xHL>, // 0xAE
+    create_and_execute::<RES_5_A>,   // 0xAF
+    create_and_execute::<RES_6_B>,   // 0xB0
+    create_and_execute::<RES_6_C>,   // 0xB1
+    create_and_execute::<RES_6_D>,   // 0xB2
+    create_and_execute::<RES_6_E>,   // 0xB3
+    create_and_execute::<RES_6_H>,   // 0xB4
+    create_and_execute::<RES_6_L>,   // 0xB5
+    create_and_execute::<RES_6_xHL>, // 0xB6
+    create_and_execute::<RES_6_A>,   // 0xB7
+    create_and_execute::<RES_7_B>,   // 0xB8
+    create_and_execute::<RES_7_C>,   // 0xB9
+    create_and_execute::<RES_7_D>,   // 0xBA
+    create_and_execute::<RES_7_E>,   // 0xBB
+    create_and_execute::<RES_7_H>,   // 0xBC
+    create_and_execute::<RES_7_L>,   // 0xBD
+    create_and_execute::<RES_7_xHL>, // 0xBE
+    create_and_execute::<RES_7_A>,   // 0xBF
+    create_and_execute::<SET_0_B>,   // 0xC0
+    create_and_execute::<SET_0_C>,   // 0xC1
+    create_and_execute::<SET_0_D>,   // 0xC2
+    create_and_execute::<SET_0_E>,   // 0xC3
+    create_and_execute::<SET_0_H>,   // 0xC4
+    create_and_execute::<SET_0_L>,   // 0xC5
+    create_and_execute::<SET_0_xHL>, // 0xC6
+    create_and_execute::<SET_0_A>,   // 0xC7
+    create_and_execute::<SET_1_B>,   // 0xC8
+    create_and_execute::<SET_1_C>,   // 0xC9
+    create_and_execute::<SET_1_D>,   // 0xCA
+    create_and_execute::<SET_1_E>,   // 0xCB
+    create_and_execute::<SET_1_H>,   // 0xCC
+    create_and_execute::<SET_1_L>,   // 0xCD
+    create_and_execute::<SET_1_xHL>, // 0xCE
+    create_and_execute::<SET_1_A>,   // 0xCF
+    create_and_execute::<SET_2_B>,   // 0xD0
+    create_and_execute::<SET_2_C>,   // 0xD1
+    create_and_execute::<SET_2_D>,   // 0xD2
+    create_and_execute::<SET_2_E>,   // 0xD3
+    create_and_execute::<SET_2_H>,   // 0xD4
+    create_and_execute::<SET_2_L>,   // 0xD5
+    create_and_execute::<SET_2_xHL>, // 0xD6
+    create_and_execute::<SET_2_A>,   // 0xD7
+    create_and_execute::<SET_3_B>,   // 0xD8
+    create_and_execute::<SET_3_C>,   // 0xD9
+    create_and_execute::<SET_3_D>,   // 0xDA
+    create_and_execute::<SET_3_E>,   // 0xDB
+    create_and_execute::<SET_3_H>,   // 0xDC
+    create_and_execute::<SET_3_L>,   // 0xDD
+    create_and_execute::<SET_3_xHL>, // 0xDE
+    create_and_execute::<SET_3_A>,   // 0xDF
+    create_and_execute::<SET_4_B>,   // 0xE0
+    create_and_execute::<SET_4_C>,   // 0xE1
+    create_and_execute::<SET_4_D>,   // 0xE2
+    create_and_execute::<SET_4_E>,   // 0xE3
+    create_and_execute::<SET_4_H>,   // 0xE4
+    create_and_execute::<SET_4_L>,   // 0xE5
+    create_and_execute::<SET_4_xHL>, // 0xE6
+    create_and_execute::<SET_4_A>,   // 0xE7
+    create_and_execute::<SET_5_B>,   // 0xE8
+    create_and_execute::<SET_5_C>,   // 0xE9
+    create_and_execute::<SET_5_D>,   // 0xEA
+    create_and_execute::<SET_5_E>,   // 0xEB
+    create_and_execute::<SET_5_H>,   // 0xEC
+    create_and_execute::<SET_5_L>,   // 0xED
+    create_and_execute::<SET_5_xHL>, // 0xEE
+    create_and_execute::<SET_5_A>,   // 0xEF
+    create_and_execute::<SET_6_B>,   // 0xF0
+    create_and_execute::<SET_6_C>,   // 0xF1
+    create_and_execute::<SET_6_D>,   // 0xF2
+    create_and_execute::<SET_6_E>,   // 0xF3
+    create_and_execute::<SET_6_H>,   // 0xF4
+    create_and_execute::<SET_6_L>,   // 0xF5
+    create_and_execute::<SET_6_xHL>, // 0xF6
+    create_and_execute::<SET_6_A>,   // 0xF7
+    create_and_execute::<SET_7_B>,   // 0xF8
+    create_and_execute::<SET_7_C>,   // 0xF9
+    create_and_execute::<SET_7_D>,   // 0xFA
+    create_and_execute::<SET_7_E>,   // 0xFB
+    create_and_execute::<SET_7_H>,   // 0xFC
+    create_and_execute::<SET_7_L>,   // 0xFD
+    create_and_execute::<SET_7_xHL>, // 0xFE
+    create_and_execute::<SET_7_A>,   // 0xFF
+];
+
+fn create_and_execute<Op: OpConstruct + OpExecute>(
+    opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory) {
+    let op = Op::new(opcode);
+    op.execute(registers, memory);
+}
+
+fn execute_extended_opcode(
+    opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory) {
 }
 
 #[derive(Copy, Clone)]
@@ -632,20 +583,6 @@ struct Opcode {
     b2: u8,
     b3: u8,
 }
-
-//    fn get_address(&self) -> u16 {
-//        self.code & 0xFFF
-//    }
-
-//    fn get_nibble(&self, nibble: u8) -> u8 {
-//        let shift = (nibble - 1) * 4;
-//        ((self.code & (0xF << shift)) >> shift) as u8
-//    }
-
-//    fn get_low_byte(&self) -> u8 {
-//        (self.code & 0xFF) as u8
-//    }
-//}
 
 struct Registers {
     a: u8,
@@ -709,8 +646,8 @@ trait OpConstruct {
     fn new(opcode: Opcode) -> Self;
 }
 
-trait OpExecute<M: Memory> {
-    fn execute(&self, registers: &mut Registers, memory: &mut M);
+trait OpExecute {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory);
 }
 
 fn to_u16(h: u8, l: u8) -> u16 {
@@ -730,22 +667,6 @@ fn decrement_register_pair(h: &mut u8, l: &mut u8) {
 fn increment_register_pair(h: &mut u8, l: &mut u8) {
     let value = to_u16(*h, *l) + 1;
     store_value_in_register_pair(value, h, l);
-}
-
-fn wrapping_add(a: u8, b: u8) -> u8 {
-    (Wrapping(a) + Wrapping(b)).0
-}
-
-fn wrapping_sub(a: u8, b: u8) -> u8 {
-    (Wrapping(a) - Wrapping(b)).0
-}
-
-fn wrapping_add_u16(a: u16, b: u16) -> u16 {
-    (Wrapping(a) + Wrapping(b)).0
-}
-
-fn wrapping_sub_u16(a: u16, b: u16) -> u16 {
-    (Wrapping(a) - Wrapping(b)).0
 }
 
 macro_rules! create_opcode_struct {
@@ -779,8 +700,8 @@ macro_rules! create_opcode_struct {
 macro_rules! ld_r_n {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 registers.$reg = self.b2;
                 registers.pc += 2;
                 registers.cycles_of_last_command = 8;
@@ -802,8 +723,8 @@ ld_r_n!(
 macro_rules! ld_r1_r2 {
     ($($reg1:ident, $reg2:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 registers.$reg1 = registers.$reg2;
                 registers.pc += 1;
                 registers.cycles_of_last_command = 4;
@@ -867,8 +788,8 @@ ld_r1_r2!(
 macro_rules! ld_r_xrr {
     ($($reg1:ident, $reg2:ident, $reg3:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 let address = to_u16(registers.$reg2, registers.$reg3);
                 registers.$reg1 = memory.read_byte(address);
                 registers.pc += 1;
@@ -893,8 +814,8 @@ ld_r_xrr!(
 macro_rules! ld_xhl_r {
     ($($reg1:ident, $reg2:ident, $reg3:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 let address = to_u16(registers.$reg1, registers.$reg2);
                 memory.write_byte(address, registers.$reg3);
                 registers.pc += 1;
@@ -917,8 +838,8 @@ ld_xhl_r!(
 
 // Load 8-bit immediate into (HL)
 create_opcode_struct!(LD_xHL_N);
-impl<M: Memory> OpExecute<M> for LD_xHL_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LD_xHL_N {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, self.b2);
         registers.pc += 2;
@@ -928,8 +849,8 @@ impl<M: Memory> OpExecute<M> for LD_xHL_N {
 
 // Load (nn) into A where nn is a 16-bit immediate
 create_opcode_struct!(LD_A_xNN);
-impl<M: Memory> OpExecute<M> for LD_A_xNN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LD_A_xNN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(self.b3, self.b2);
         registers.a = memory.read_byte(address);
         registers.pc += 3;
@@ -939,8 +860,8 @@ impl<M: Memory> OpExecute<M> for LD_A_xNN {
 
 // Load A into (nn) where nn is a 16-bit immediate
 create_opcode_struct!(LD_xNN_A);
-impl<M: Memory> OpExecute<M> for LD_xNN_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LD_xNN_A {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(self.b3, self.b2);
         memory.write_byte(address, registers.a);
         registers.pc += 3;
@@ -950,8 +871,8 @@ impl<M: Memory> OpExecute<M> for LD_xNN_A {
 
 // Load (0xFF00 + C) into A
 create_opcode_struct!(LDH_A_xC);
-impl<M: Memory> OpExecute<M> for LDH_A_xC {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDH_A_xC {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = 0xFF00 + registers.c as u16;
         registers.a = memory.read_byte(address);
         registers.pc += 1;
@@ -961,8 +882,8 @@ impl<M: Memory> OpExecute<M> for LDH_A_xC {
 
 // Load A into (0xFF00 + C)
 create_opcode_struct!(LDH_xC_A);
-impl<M: Memory> OpExecute<M> for LDH_xC_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDH_xC_A {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = 0xFF00 + registers.c as u16;
         memory.write_byte(address, registers.a);
         registers.pc += 1;
@@ -972,8 +893,8 @@ impl<M: Memory> OpExecute<M> for LDH_xC_A {
 
 // Load (0xFF00 + N) into A
 create_opcode_struct!(LDH_A_xN);
-impl<M: Memory> OpExecute<M> for LDH_A_xN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDH_A_xN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = 0xFF00 + self.b2 as u16;
         registers.a = memory.read_byte(address);
         registers.pc += 2;
@@ -983,8 +904,8 @@ impl<M: Memory> OpExecute<M> for LDH_A_xN {
 
 // Load A into (0xFF00 + N)
 create_opcode_struct!(LDH_xN_A);
-impl<M: Memory> OpExecute<M> for LDH_xN_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDH_xN_A {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = 0xFF00 + self.b2 as u16;
         memory.write_byte(address, registers.a);
         registers.pc += 2;
@@ -994,8 +915,8 @@ impl<M: Memory> OpExecute<M> for LDH_xN_A {
 
 // Load (HL) into A. Decrement HL.
 create_opcode_struct!(LDD_A_xHL);
-impl<M: Memory> OpExecute<M> for LDD_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDD_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         decrement_register_pair(&mut registers.h, &mut registers.l);
@@ -1006,8 +927,8 @@ impl<M: Memory> OpExecute<M> for LDD_A_xHL {
 
 // Load A into (HL). Decrement HL.
 create_opcode_struct!(LDD_xHL_A);
-impl<M: Memory> OpExecute<M> for LDD_xHL_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDD_xHL_A {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         decrement_register_pair(&mut registers.h, &mut registers.l);
@@ -1018,8 +939,8 @@ impl<M: Memory> OpExecute<M> for LDD_xHL_A {
 
 // Load (HL) into A. Increment HL.
 create_opcode_struct!(LDI_A_xHL);
-impl<M: Memory> OpExecute<M> for LDI_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDI_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         increment_register_pair(&mut registers.h, &mut registers.l);
@@ -1030,8 +951,8 @@ impl<M: Memory> OpExecute<M> for LDI_A_xHL {
 
 // Load A into (HL). Decrement HL.
 create_opcode_struct!(LDI_xHL_A);
-impl<M: Memory> OpExecute<M> for LDI_xHL_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LDI_xHL_A {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         increment_register_pair(&mut registers.h, &mut registers.l);
@@ -1046,8 +967,8 @@ impl<M: Memory> OpExecute<M> for LDI_xHL_A {
 macro_rules! ld_rr_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let value = to_u16(self.b3, self.b2);
                 store_value_in_register_pair(value, &mut registers.$reg_high, &mut registers.$reg_low);
                 registers.pc += 3;
@@ -1064,8 +985,8 @@ ld_rr_nn!(
 
 // Load 16-bit immediate into stack pointer
 create_opcode_struct!(LD_SP_NN);
-impl<M: Memory> OpExecute<M> for LD_SP_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for LD_SP_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.sp = to_u16(self.b3, self.b2);
         registers.pc += 3;
         registers.cycles_of_last_command = 12;
@@ -1074,8 +995,8 @@ impl<M: Memory> OpExecute<M> for LD_SP_NN {
 
 // Load 16-bit immediate into stack pointer
 create_opcode_struct!(LD_SP_HL);
-impl<M: Memory> OpExecute<M> for LD_SP_HL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for LD_SP_HL {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.sp = to_u16(registers.h, registers.l);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -1084,8 +1005,8 @@ impl<M: Memory> OpExecute<M> for LD_SP_HL {
 
 // Put SP + n effective address into HL
 create_opcode_struct!(LDHL_SP_N);
-impl<M: Memory> OpExecute<M> for LDHL_SP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for LDHL_SP_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let address = registers.sp + self.b2 as u16;
         store_value_in_register_pair(address, &mut registers.h, &mut registers.l);
         registers.pc += 2;
@@ -1095,8 +1016,8 @@ impl<M: Memory> OpExecute<M> for LDHL_SP_N {
 
 // Save SP to given address
 create_opcode_struct!(LD_xNN_SP);
-impl<M: Memory> OpExecute<M> for LD_xNN_SP {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for LD_xNN_SP {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = self.b2 as u16 + (self.b3 as u16) << 8;
         memory.write_word(address, registers.sp);
         registers.pc += 3;
@@ -1108,8 +1029,8 @@ impl<M: Memory> OpExecute<M> for LD_xNN_SP {
 macro_rules! push_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 memory.write_byte(registers.sp, registers.$reg_high);
                 memory.write_byte(registers.sp - 1, registers.$reg_low);
                 registers.sp -= 2;
@@ -1130,8 +1051,8 @@ push_nn!(
 macro_rules! pop_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 registers.sp += 2;
                 registers.$reg_high = memory.read_byte(registers.sp);
                 registers.$reg_low = memory.read_byte(registers.sp - 1);
@@ -1152,8 +1073,8 @@ pop_nn!(
 macro_rules! add_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let sum = (Wrapping(a) + Wrapping(r)).0;
@@ -1179,8 +1100,8 @@ add_a_r!(
 );
 
 create_opcode_struct!(ADD_A_xHL);
-impl<M: Memory> OpExecute<M> for ADD_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for ADD_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1196,8 +1117,8 @@ impl<M: Memory> OpExecute<M> for ADD_A_xHL {
 }
 
 create_opcode_struct!(ADD_A_N);
-impl<M: Memory> OpExecute<M> for ADD_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for ADD_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let a = registers.a;
         let sum = (Wrapping(a) + Wrapping(self.b2)).0;
         registers.set_zero(sum == 0);
@@ -1214,8 +1135,8 @@ impl<M: Memory> OpExecute<M> for ADD_A_N {
 macro_rules! adc_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
@@ -1242,8 +1163,8 @@ adc_a_r!(
 );
 
 create_opcode_struct!(ADC_A_xHL);
-impl<M: Memory> OpExecute<M> for ADC_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for ADC_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1260,8 +1181,8 @@ impl<M: Memory> OpExecute<M> for ADC_A_xHL {
 }
 
 create_opcode_struct!(ADC_A_N);
-impl<M: Memory> OpExecute<M> for ADC_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for ADC_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let a = registers.a;
         let carry = registers.get_carry() as u8;
         let sum = (Wrapping(a) + Wrapping(self.b2) + Wrapping(carry)).0;
@@ -1279,8 +1200,8 @@ impl<M: Memory> OpExecute<M> for ADC_A_N {
 macro_rules! sub_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let difference = (Wrapping(a) - Wrapping(r)).0;
@@ -1306,8 +1227,8 @@ sub_a_r!(
 );
 
 create_opcode_struct!(SUB_A_xHL);
-impl<M: Memory> OpExecute<M> for SUB_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SUB_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1323,8 +1244,8 @@ impl<M: Memory> OpExecute<M> for SUB_A_xHL {
 }
 
 create_opcode_struct!(SUB_A_N);
-impl<M: Memory> OpExecute<M> for SUB_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for SUB_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
@@ -1342,8 +1263,8 @@ impl<M: Memory> OpExecute<M> for SUB_A_N {
 macro_rules! sbc_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
@@ -1371,8 +1292,8 @@ sbc_a_r!(
 );
 
 create_opcode_struct!(SBC_A_xHL);
-impl<M: Memory> OpExecute<M> for SBC_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SBC_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1390,8 +1311,8 @@ impl<M: Memory> OpExecute<M> for SBC_A_xHL {
 }
 
 create_opcode_struct!(SBC_A_N);
-impl<M: Memory> OpExecute<M> for SBC_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for SBC_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let a = registers.a;
         let val = self.b2;
         let carry = registers.get_carry() as u8;
@@ -1411,8 +1332,8 @@ impl<M: Memory> OpExecute<M> for SBC_A_N {
 macro_rules! and_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 registers.a &= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1436,8 +1357,8 @@ and_a_r!(
 );
 
 create_opcode_struct!(AND_A_xHL);
-impl<M: Memory> OpExecute<M> for AND_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for AND_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a &= val;
@@ -1452,8 +1373,8 @@ impl<M: Memory> OpExecute<M> for AND_A_xHL {
 }
 
 create_opcode_struct!(AND_A_N);
-impl<M: Memory> OpExecute<M> for AND_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for AND_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = self.b2;
         registers.a &= val;
         let zero = registers.a == 0;
@@ -1470,8 +1391,8 @@ impl<M: Memory> OpExecute<M> for AND_A_N {
 macro_rules! or_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 registers.a |= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1495,8 +1416,8 @@ or_a_r!(
 );
 
 create_opcode_struct!(OR_A_xHL);
-impl<M: Memory> OpExecute<M> for OR_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for OR_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a |= val;
@@ -1511,8 +1432,8 @@ impl<M: Memory> OpExecute<M> for OR_A_xHL {
 }
 
 create_opcode_struct!(OR_A_N);
-impl<M: Memory> OpExecute<M> for OR_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for OR_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = self.b2;
         registers.a |= val;
         let zero = registers.a == 0;
@@ -1529,8 +1450,8 @@ impl<M: Memory> OpExecute<M> for OR_A_N {
 macro_rules! xor_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 registers.a ^= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1554,8 +1475,8 @@ xor_a_r!(
 );
 
 create_opcode_struct!(XOR_A_xHL);
-impl<M: Memory> OpExecute<M> for XOR_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for XOR_A_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a ^= val;
@@ -1570,8 +1491,8 @@ impl<M: Memory> OpExecute<M> for XOR_A_xHL {
 }
 
 create_opcode_struct!(XOR_A_N);
-impl<M: Memory> OpExecute<M> for XOR_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for XOR_A_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = self.b2;
         registers.a ^= val;
         let zero = registers.a == 0;
@@ -1588,8 +1509,8 @@ impl<M: Memory> OpExecute<M> for XOR_A_N {
 macro_rules! cp_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let difference = (Wrapping(a) - Wrapping(r)).0;
@@ -1614,8 +1535,8 @@ cp_r!(
 );
 
 create_opcode_struct!(CP_xHL);
-impl<M: Memory> OpExecute<M> for CP_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CP_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1630,8 +1551,8 @@ impl<M: Memory> OpExecute<M> for CP_xHL {
 }
 
 create_opcode_struct!(CP_N);
-impl<M: Memory> OpExecute<M> for CP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for CP_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
@@ -1648,12 +1569,12 @@ impl<M: Memory> OpExecute<M> for CP_N {
 macro_rules! inc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let halfcarry = (val & 0xF) == 0xF;
                 registers.set_halfcarry(halfcarry);
-                let new_val = wrapping_add(val, 1);
+                let new_val = val.wrapping_add(1);
                 registers.$reg = new_val;
                 registers.set_zero(new_val == 0);
                 registers.set_operation(false);
@@ -1674,13 +1595,13 @@ inc_r!(
 );
 
 create_opcode_struct!(INC_xHL);
-impl<M: Memory> OpExecute<M> for INC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for INC_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let halfcarry = (val & 0xF) == 0xF;
         registers.set_halfcarry(halfcarry);
-        let new_val = wrapping_add(val, 1);
+        let new_val = val.wrapping_add(1);
         memory.write_byte(address, new_val);
         registers.set_zero(new_val == 0);
         registers.set_operation(false);
@@ -1693,10 +1614,10 @@ impl<M: Memory> OpExecute<M> for INC_xHL {
 macro_rules! dec_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
-                let new_val = wrapping_sub(val, 1);
+                let new_val = val.wrapping_sub(1);
                 registers.$reg = new_val;
                 let borrow = (new_val & 0xF) == 0xF;
                 registers.set_halfcarry(!borrow);
@@ -1719,11 +1640,11 @@ dec_r!(
 );
 
 create_opcode_struct!(DEC_xHL);
-impl<M: Memory> OpExecute<M> for DEC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for DEC_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
-        let new_val = wrapping_sub(val, 1);
+        let new_val = val.wrapping_sub(1);
         memory.write_byte(address, new_val);
         let borrow = (new_val & 0xF) == 0xF;
         registers.set_halfcarry(!borrow);
@@ -1738,11 +1659,11 @@ impl<M: Memory> OpExecute<M> for DEC_xHL {
 macro_rules! add_hl_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let hl = to_u16(registers.h, registers.l);
                 let rr = to_u16(registers.$reg_high, registers.$reg_low);
-                let sum = wrapping_add_u16(hl, rr);
+                let sum = hl.wrapping_add(rr);
                 store_value_in_register_pair(sum, &mut registers.h, &mut registers.l);
                 registers.set_operation(false);
                 registers.set_halfcarry((sum & 0xFFF) < (hl & 0xFFF));
@@ -1760,10 +1681,10 @@ add_hl_rr!(
 );
 
 create_opcode_struct!(ADD_HL_SP);
-impl<M: Memory> OpExecute<M> for ADD_HL_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for ADD_HL_SP {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let hl = to_u16(registers.h, registers.l);
-        let sum = wrapping_add_u16(hl, registers.sp);
+        let sum = hl.wrapping_add(registers.sp);
         store_value_in_register_pair(sum, &mut registers.h, &mut registers.l);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xFFF) < (hl & 0xFFF));
@@ -1774,10 +1695,10 @@ impl<M: Memory> OpExecute<M> for ADD_HL_SP {
 }
 
 create_opcode_struct!(ADD_SP_N);
-impl<M: Memory> OpExecute<M> for ADD_SP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for ADD_SP_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let sp = registers.sp;
-        let sum = wrapping_add_u16(sp, self.b2 as u16);
+        let sum = sp.wrapping_add(self.b2 as u16);
         registers.sp = sum;
         registers.set_zero(false);
         registers.set_operation(false);
@@ -1792,10 +1713,10 @@ impl<M: Memory> OpExecute<M> for ADD_SP_N {
 macro_rules! inc_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = to_u16(registers.$reg_high, registers.$reg_low);
-                let new_val = wrapping_add_u16(val, 1);
+                let new_val = val.wrapping_add(1);
                 store_value_in_register_pair(new_val, &mut registers.$reg_high, &mut registers.$reg_low);
                 registers.pc += 1;
                 registers.cycles_of_last_command = 8;
@@ -1810,9 +1731,9 @@ inc_rr!(
 );
 
 create_opcode_struct!(INC_SP);
-impl<M: Memory> OpExecute<M> for INC_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
-        registers.sp = wrapping_add_u16(registers.sp, 1);
+impl OpExecute for INC_SP {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+        registers.sp = registers.sp.wrapping_add(1);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
     }
@@ -1822,10 +1743,10 @@ impl<M: Memory> OpExecute<M> for INC_SP {
 macro_rules! dec_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = to_u16(registers.$reg_high, registers.$reg_low);
-                let new_val = wrapping_sub_u16(val, 1);
+                let new_val = val.wrapping_sub(1);
                 store_value_in_register_pair(new_val, &mut registers.$reg_high, &mut registers.$reg_low);
                 registers.pc += 1;
                 registers.cycles_of_last_command = 8;
@@ -1840,9 +1761,9 @@ dec_rr!(
 );
 
 create_opcode_struct!(DEC_SP);
-impl<M: Memory> OpExecute<M> for DEC_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
-        registers.sp = wrapping_sub_u16(registers.sp, 1);
+impl OpExecute for DEC_SP {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+        registers.sp = registers.sp.wrapping_sub(1);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
     }
@@ -1852,8 +1773,8 @@ impl<M: Memory> OpExecute<M> for DEC_SP {
 macro_rules! swap_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let high = (val & 0xF0) >> 4;
                 let low = val & 0xF;
@@ -1880,8 +1801,8 @@ swap_r!(
 );
 
 create_opcode_struct!(SWAP_xHL);
-impl<M: Memory> OpExecute<M> for SWAP_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SWAP_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let high = (val & 0xF0) >> 4;
@@ -1899,8 +1820,8 @@ impl<M: Memory> OpExecute<M> for SWAP_xHL {
 
 // BCD correction for register A
 create_opcode_struct!(DAA);
-impl<M: Memory> OpExecute<M> for DAA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for DAA {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let mut val = registers.a;
         if (val & 0xF) > 0x9 || registers.get_halfcarry() {
             val += 0x6;
@@ -1921,8 +1842,8 @@ impl<M: Memory> OpExecute<M> for DAA {
 
 // Complement A register
 create_opcode_struct!(CPL);
-impl<M: Memory> OpExecute<M> for CPL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for CPL {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.a ^= 0xFF;
         registers.set_operation(true);
         registers.set_halfcarry(true);
@@ -1933,8 +1854,8 @@ impl<M: Memory> OpExecute<M> for CPL {
 
 // Complement carry flag
 create_opcode_struct!(CCF);
-impl<M: Memory> OpExecute<M> for CCF {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for CCF {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let carry = registers.get_carry();
         registers.set_carry(!carry);
         registers.set_operation(false);
@@ -1946,8 +1867,8 @@ impl<M: Memory> OpExecute<M> for CCF {
 
 // Set carry flag
 create_opcode_struct!(SCF);
-impl<M: Memory> OpExecute<M> for SCF {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for SCF {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.set_carry(true);
         registers.set_operation(false);
         registers.set_halfcarry(false);
@@ -1958,8 +1879,8 @@ impl<M: Memory> OpExecute<M> for SCF {
 
 // No operation
 create_opcode_struct!(NOP);
-impl<M: Memory> OpExecute<M> for NOP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for NOP {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1967,8 +1888,8 @@ impl<M: Memory> OpExecute<M> for NOP {
 
 // Power down CPU until an interrupt occurs
 create_opcode_struct!(HALT);
-impl<M: Memory> OpExecute<M> for HALT {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for HALT {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -1977,8 +1898,8 @@ impl<M: Memory> OpExecute<M> for HALT {
 
 // Halt CPU & LCD display until button pressed
 create_opcode_struct!(STOP);
-impl<M: Memory> OpExecute<M> for STOP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for STOP {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         //TODO: Implement
         registers.pc += 2;
         registers.cycles_of_last_command = 4;
@@ -1987,8 +1908,8 @@ impl<M: Memory> OpExecute<M> for STOP {
 
 // Disables interrupts after the next instruction is executed
 create_opcode_struct!(DI);
-impl<M: Memory> OpExecute<M> for DI {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for DI {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -1997,8 +1918,8 @@ impl<M: Memory> OpExecute<M> for DI {
 
 // Enables interrupts after the next instruction is executed
 create_opcode_struct!(EI);
-impl<M: Memory> OpExecute<M> for EI {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for EI {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -2007,8 +1928,8 @@ impl<M: Memory> OpExecute<M> for EI {
 
 // Rotate A left
 create_opcode_struct!(RLCA);
-impl<M: Memory> OpExecute<M> for RLCA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for RLCA {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = registers.a;
         let carry = (val & 0x80) >> 7;
         let new_val = (val << 1) + carry;
@@ -2024,8 +1945,8 @@ impl<M: Memory> OpExecute<M> for RLCA {
 
 // Rotate A left through carry flag
 create_opcode_struct!(RLA);
-impl<M: Memory> OpExecute<M> for RLA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for RLA {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = registers.a;
         let carry_in = registers.get_carry() as u8;
         let carry_out = (val & 0x80) != 0;
@@ -2042,8 +1963,8 @@ impl<M: Memory> OpExecute<M> for RLA {
 
 // Rotate A right
 create_opcode_struct!(RRCA);
-impl<M: Memory> OpExecute<M> for RRCA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for RRCA {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = registers.a;
         let carry = val & 0x1;
         let new_val = (val >> 1) + carry * 0x80;
@@ -2059,8 +1980,8 @@ impl<M: Memory> OpExecute<M> for RRCA {
 
 // Rotate A right through carry flag
 create_opcode_struct!(RRA);
-impl<M: Memory> OpExecute<M> for RRA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for RRA {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let val = registers.a;
         let carry_in = registers.get_carry() as u8;
         let carry_out = (val & 0x1) != 0;
@@ -2079,8 +2000,8 @@ impl<M: Memory> OpExecute<M> for RRA {
 macro_rules! rlc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry = (val & 0x80) >> 7;
                 let new_val = (val << 1) + carry;
@@ -2106,8 +2027,8 @@ rlc_r!(
 );
 
 create_opcode_struct!(RLC_xHL);
-impl<M: Memory> OpExecute<M> for RLC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RLC_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x80) >> 7;
@@ -2126,8 +2047,8 @@ impl<M: Memory> OpExecute<M> for RLC_xHL {
 macro_rules! rl_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry_in = registers.get_carry() as u8;
                 let carry_out = (val & 0x80) != 0;
@@ -2154,8 +2075,8 @@ rl_r!(
 );
 
 create_opcode_struct!(RL_xHL);
-impl<M: Memory> OpExecute<M> for RL_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RL_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry_in = registers.get_carry() as u8;
@@ -2175,8 +2096,8 @@ impl<M: Memory> OpExecute<M> for RL_xHL {
 macro_rules! rrc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry = val & 0x1;
                 let new_val = (val >> 1) + carry * 0x80;
@@ -2202,8 +2123,8 @@ rrc_r!(
 );
 
 create_opcode_struct!(RRC_xHL);
-impl<M: Memory> OpExecute<M> for RRC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RRC_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = val & 0x1;
@@ -2222,8 +2143,8 @@ impl<M: Memory> OpExecute<M> for RRC_xHL {
 macro_rules! rr_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry_in = registers.get_carry() as u8;
                 let carry_out = (val & 0x1) != 0;
@@ -2250,8 +2171,8 @@ rr_r!(
 );
 
 create_opcode_struct!(RR_xHL);
-impl<M: Memory> OpExecute<M> for RR_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RR_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry_in = registers.get_carry() as u8;
@@ -2271,8 +2192,8 @@ impl<M: Memory> OpExecute<M> for RR_xHL {
 macro_rules! sla_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry = (val & 0x80) != 0;
                 let new_val = val << 1;
@@ -2298,8 +2219,8 @@ sla_r!(
 );
 
 create_opcode_struct!(SLA_xHL);
-impl<M: Memory> OpExecute<M> for SLA_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SLA_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x80) != 0;
@@ -2318,8 +2239,8 @@ impl<M: Memory> OpExecute<M> for SLA_xHL {
 macro_rules! sra_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry = (val & 0x1) != 0;
                 let msb = val & 0x80;
@@ -2347,8 +2268,8 @@ sra_r!(
 );
 
 create_opcode_struct!(SRA_xHL);
-impl<M: Memory> OpExecute<M> for SRA_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SRA_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x1) != 0;
@@ -2369,8 +2290,8 @@ impl<M: Memory> OpExecute<M> for SRA_xHL {
 macro_rules! srl_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let carry = (val & 0x1) != 0;
                 let new_val = val >> 1;
@@ -2396,8 +2317,8 @@ srl_r!(
 );
 
 create_opcode_struct!(SRL_xHL);
-impl<M: Memory> OpExecute<M> for SRL_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for SRL_xHL {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x1) != 0;
@@ -2416,8 +2337,8 @@ impl<M: Memory> OpExecute<M> for SRL_xHL {
 macro_rules! bit_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let reg = registers.$reg;
                 let bit = (0x1 << $bit) & reg != 0;
                 registers.set_zero(!bit);
@@ -2491,8 +2412,8 @@ bit_b_r!(
 macro_rules! bit_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 let address = to_u16(registers.h, registers.l);
                 let reg = memory.read_byte(address);
                 let bit = (0x1 << $bit) & reg != 0;
@@ -2520,8 +2441,8 @@ bit_b_hl!(
 macro_rules! set_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let bit = 0x1 << $bit;
                 let new_val = val | bit;
@@ -2594,8 +2515,8 @@ set_b_r!(
 macro_rules! set_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 let address = to_u16(registers.h, registers.l);
                 let val = memory.read_byte(address);
                 let bit = 0x1 << $bit;
@@ -2622,8 +2543,8 @@ set_b_hl!(
 macro_rules! res_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
                 let val = registers.$reg;
                 let bit = 0x1 << $bit;
                 let new_val = val & !bit;
@@ -2696,8 +2617,8 @@ res_b_r!(
 macro_rules! res_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 let address = to_u16(registers.h, registers.l);
                 let val = memory.read_byte(address);
                 let bit = 0x1 << $bit;
@@ -2722,8 +2643,8 @@ res_b_hl!(
 
 // Jump to address nn
 create_opcode_struct!(JP_NN);
-impl<M: Memory> OpExecute<M> for JP_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let address = to_u16(self.b3, self.b2);
         registers.pc = address;
         registers.cycles_of_last_command = 12;
@@ -2732,8 +2653,8 @@ impl<M: Memory> OpExecute<M> for JP_NN {
 
 // Jump to address nn if Z flag is reset
 create_opcode_struct!(JP_NZ_NN);
-impl<M: Memory> OpExecute<M> for JP_NZ_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_NZ_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if !registers.get_zero() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2746,8 +2667,8 @@ impl<M: Memory> OpExecute<M> for JP_NZ_NN {
 
 // Jump to address nn if Z flag is set
 create_opcode_struct!(JP_Z_NN);
-impl<M: Memory> OpExecute<M> for JP_Z_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_Z_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if registers.get_zero() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2760,8 +2681,8 @@ impl<M: Memory> OpExecute<M> for JP_Z_NN {
 
 // Jump to address nn if C flag is reset
 create_opcode_struct!(JP_NC_NN);
-impl<M: Memory> OpExecute<M> for JP_NC_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_NC_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if !registers.get_carry() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2774,8 +2695,8 @@ impl<M: Memory> OpExecute<M> for JP_NC_NN {
 
 // Jump to address nn if C flag is set
 create_opcode_struct!(JP_C_NN);
-impl<M: Memory> OpExecute<M> for JP_C_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_C_NN {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if registers.get_carry() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2788,8 +2709,8 @@ impl<M: Memory> OpExecute<M> for JP_C_NN {
 
 // Jump to address in HL
 create_opcode_struct!(JP_xHL);
-impl<M: Memory> OpExecute<M> for JP_xHL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JP_xHL {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         let address = to_u16(registers.h, registers.l);
         registers.pc = address;
         registers.cycles_of_last_command = 4;
@@ -2798,8 +2719,8 @@ impl<M: Memory> OpExecute<M> for JP_xHL {
 
 // Jump to n + current address
 create_opcode_struct!(JR_N);
-impl<M: Memory> OpExecute<M> for JR_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JR_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         registers.cycles_of_last_command = 8;
     }
@@ -2807,8 +2728,8 @@ impl<M: Memory> OpExecute<M> for JR_N {
 
 // Jump to n + current address if Z flag is reset
 create_opcode_struct!(JR_NZ_N);
-impl<M: Memory> OpExecute<M> for JR_NZ_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JR_NZ_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if !registers.get_zero() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2820,8 +2741,8 @@ impl<M: Memory> OpExecute<M> for JR_NZ_N {
 
 // Jump to n + current address if Z flag is set
 create_opcode_struct!(JR_Z_N);
-impl<M: Memory> OpExecute<M> for JR_Z_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JR_Z_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if registers.get_zero() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2833,8 +2754,8 @@ impl<M: Memory> OpExecute<M> for JR_Z_N {
 
 // Jump to n + current address if C flag is reset
 create_opcode_struct!(JR_NC_N);
-impl<M: Memory> OpExecute<M> for JR_NC_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JR_NC_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if !registers.get_carry() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2846,8 +2767,8 @@ impl<M: Memory> OpExecute<M> for JR_NC_N {
 
 // Jump to n + current address if C flag is set
 create_opcode_struct!(JR_C_N);
-impl<M: Memory> OpExecute<M> for JR_C_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut M) {
+impl OpExecute for JR_C_N {
+    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
         if registers.get_carry() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2859,8 +2780,8 @@ impl<M: Memory> OpExecute<M> for JR_C_N {
 
 // Push address of next instruction onto stack and then jump to address nn
 create_opcode_struct!(CALL_NN);
-impl<M: Memory> OpExecute<M> for CALL_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CALL_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         memory.write_word(registers.sp - 1, registers.pc + 3);
         registers.sp -= 2;
         let address = to_u16(self.b3, self.b2);
@@ -2871,8 +2792,8 @@ impl<M: Memory> OpExecute<M> for CALL_NN {
 
 // Call address nn if Z flag is reset
 create_opcode_struct!(CALL_NZ_NN);
-impl<M: Memory> OpExecute<M> for CALL_NZ_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CALL_NZ_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if !registers.get_zero() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2887,8 +2808,8 @@ impl<M: Memory> OpExecute<M> for CALL_NZ_NN {
 
 // Call address nn if Z flag is set
 create_opcode_struct!(CALL_Z_NN);
-impl<M: Memory> OpExecute<M> for CALL_Z_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CALL_Z_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if registers.get_zero() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2903,8 +2824,8 @@ impl<M: Memory> OpExecute<M> for CALL_Z_NN {
 
 // Call address nn if C flag is reset
 create_opcode_struct!(CALL_NC_NN);
-impl<M: Memory> OpExecute<M> for CALL_NC_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CALL_NC_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if !registers.get_carry() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2919,8 +2840,8 @@ impl<M: Memory> OpExecute<M> for CALL_NC_NN {
 
 // Call address nn if C flag is set
 create_opcode_struct!(CALL_C_NN);
-impl<M: Memory> OpExecute<M> for CALL_C_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for CALL_C_NN {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if registers.get_carry() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2936,8 +2857,8 @@ impl<M: Memory> OpExecute<M> for CALL_C_NN {
 macro_rules! rst_n {
     ($($address:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
-        impl<M: Memory> OpExecute<M> for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut M) {
+        impl OpExecute for $name {
+            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
                 memory.write_word(registers.sp - 1, registers.pc + 1);
                 registers.sp -= 2;
                 registers.pc = $address;
@@ -2959,8 +2880,8 @@ rst_n!(
 
 // Return
 create_opcode_struct!(RET);
-impl<M: Memory> OpExecute<M> for RET {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RET {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         let address = memory.read_word(registers.sp + 1);
         registers.sp += 2;
         registers.pc = address;
@@ -2970,8 +2891,8 @@ impl<M: Memory> OpExecute<M> for RET {
 
 // Return if Z flag is reset
 create_opcode_struct!(RET_NZ);
-impl<M: Memory> OpExecute<M> for RET_NZ {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RET_NZ {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if !registers.get_zero() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -2985,8 +2906,8 @@ impl<M: Memory> OpExecute<M> for RET_NZ {
 
 // Return if Z flag is set
 create_opcode_struct!(RET_Z);
-impl<M: Memory> OpExecute<M> for RET_Z {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RET_Z {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if registers.get_zero() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -3000,8 +2921,8 @@ impl<M: Memory> OpExecute<M> for RET_Z {
 
 // Return if C flag is reset
 create_opcode_struct!(RET_NC);
-impl<M: Memory> OpExecute<M> for RET_NC {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RET_NC {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if !registers.get_carry() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -3015,8 +2936,8 @@ impl<M: Memory> OpExecute<M> for RET_NC {
 
 // Return if C flag is set
 create_opcode_struct!(RET_C);
-impl<M: Memory> OpExecute<M> for RET_C {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RET_C {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         if registers.get_carry() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -3030,12 +2951,20 @@ impl<M: Memory> OpExecute<M> for RET_C {
 
 // Return, then enable interrupts
 create_opcode_struct!(RETI);
-impl<M: Memory> OpExecute<M> for RETI {
-    fn execute(&self, registers: &mut Registers, memory: &mut M) {
+impl OpExecute for RETI {
+    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
         //TODO: Implement
         let address = memory.read_word(registers.sp + 1);
         registers.sp += 2;
         registers.pc = address;
         registers.cycles_of_last_command = 8;
+    }
+}
+
+// Unused operation
+create_opcode_struct!(XX);
+impl OpExecute for XX {
+    fn execute(&self, _registers: &mut Registers, _memory: &mut BlockMemory) {
+        panic!("Tried to call unused opcode");
     }
 }
