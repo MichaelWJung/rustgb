@@ -1,36 +1,27 @@
 use memory::Memory;
-use memory::BlockMemory;
 use std::num::Wrapping;
 
-pub struct Cpu {
+pub struct Cpu<M> {
     registers: Registers,
-    memory: BlockMemory,
+    memory: M,
+    clock: u32,
 }
 
-impl Cpu {
-    pub fn new(memory: BlockMemory) -> Cpu {
+impl<M> Cpu<M>
+    where M: Memory {
+    pub fn new(memory: M) -> Cpu<M> {
         Cpu {
             registers: Registers::new(),
             memory,
+            clock: 0,
         }
     }
 
     pub fn cycle(&mut self) {
         let opcode = self.fetch_opcode();
         self.execute_opcode(opcode);
+        self.clock += self.registers.cycles_of_last_command as u32;
     }
-
-    //pub fn decrement_timers(&mut self) {
-    //    if self.registers.delay_timer > 0 {
-    //        self.registers.delay_timer -= 1;
-    //    }
-    //    if self.registers.sound_timer > 0 {
-    //        self.registers.sound_timer -= 1;
-    //        if self.registers.sound_timer == 0 {
-    //            self.audio_device.pause();
-    //        }
-    //    }
-    //}
 
     fn fetch_opcode(&self) -> Opcode {
         let pc = self.registers.pc;
@@ -47,7 +38,7 @@ impl Cpu {
     }
 }
 
-static OPCODE_MAP: [fn(opcode:Opcode, registers: &mut Registers, memory: &mut BlockMemory); 256] =
+static OPCODE_MAP: [fn(opcode: Opcode, registers: &mut Registers, memory: &mut Memory); 256] =
 [
     create_and_execute::<NOP>,             // 0x00
     create_and_execute::<LD_BC_NN>,        // 0x01
@@ -307,7 +298,7 @@ static OPCODE_MAP: [fn(opcode:Opcode, registers: &mut Registers, memory: &mut Bl
     create_and_execute::<RST_0x38>,        // 0xFF
 ];
 
-static EXTENDED_OPCODE_MAP: [fn(opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory); 256] =
+static EXTENDED_OPCODE_MAP: [fn(opcode: Opcode, registers: &mut Registers, memory: &mut Memory); 256] =
 [
     create_and_execute::<RLC_B>,     // 0x00
     create_and_execute::<RLC_C>,     // 0x01
@@ -568,13 +559,13 @@ static EXTENDED_OPCODE_MAP: [fn(opcode: Opcode, registers: &mut Registers, memor
 ];
 
 fn create_and_execute<Op: OpConstruct + OpExecute>(
-    opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory) {
+    opcode: Opcode, registers: &mut Registers, memory: &mut Memory) {
     let op = Op::new(opcode);
     op.execute(registers, memory);
 }
 
 fn execute_extended_opcode(
-    opcode: Opcode, registers: &mut Registers, memory: &mut BlockMemory) {
+    opcode: Opcode, registers: &mut Registers, memory: &mut Memory) {
 }
 
 #[derive(Copy, Clone)]
@@ -647,7 +638,7 @@ trait OpConstruct {
 }
 
 trait OpExecute {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory);
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory);
 }
 
 fn to_u16(h: u8, l: u8) -> u16 {
@@ -701,7 +692,7 @@ macro_rules! ld_r_n {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 registers.$reg = self.b2;
                 registers.pc += 2;
                 registers.cycles_of_last_command = 8;
@@ -724,7 +715,7 @@ macro_rules! ld_r1_r2 {
     ($($reg1:ident, $reg2:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 registers.$reg1 = registers.$reg2;
                 registers.pc += 1;
                 registers.cycles_of_last_command = 4;
@@ -789,7 +780,7 @@ macro_rules! ld_r_xrr {
     ($($reg1:ident, $reg2:ident, $reg3:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.$reg2, registers.$reg3);
                 registers.$reg1 = memory.read_byte(address);
                 registers.pc += 1;
@@ -815,7 +806,7 @@ macro_rules! ld_xhl_r {
     ($($reg1:ident, $reg2:ident, $reg3:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.$reg1, registers.$reg2);
                 memory.write_byte(address, registers.$reg3);
                 registers.pc += 1;
@@ -839,7 +830,7 @@ ld_xhl_r!(
 // Load 8-bit immediate into (HL)
 create_opcode_struct!(LD_xHL_N);
 impl OpExecute for LD_xHL_N {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, self.b2);
         registers.pc += 2;
@@ -850,7 +841,7 @@ impl OpExecute for LD_xHL_N {
 // Load (nn) into A where nn is a 16-bit immediate
 create_opcode_struct!(LD_A_xNN);
 impl OpExecute for LD_A_xNN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(self.b3, self.b2);
         registers.a = memory.read_byte(address);
         registers.pc += 3;
@@ -861,7 +852,7 @@ impl OpExecute for LD_A_xNN {
 // Load A into (nn) where nn is a 16-bit immediate
 create_opcode_struct!(LD_xNN_A);
 impl OpExecute for LD_xNN_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(self.b3, self.b2);
         memory.write_byte(address, registers.a);
         registers.pc += 3;
@@ -872,7 +863,7 @@ impl OpExecute for LD_xNN_A {
 // Load (0xFF00 + C) into A
 create_opcode_struct!(LDH_A_xC);
 impl OpExecute for LDH_A_xC {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = 0xFF00 + registers.c as u16;
         registers.a = memory.read_byte(address);
         registers.pc += 1;
@@ -883,7 +874,7 @@ impl OpExecute for LDH_A_xC {
 // Load A into (0xFF00 + C)
 create_opcode_struct!(LDH_xC_A);
 impl OpExecute for LDH_xC_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = 0xFF00 + registers.c as u16;
         memory.write_byte(address, registers.a);
         registers.pc += 1;
@@ -894,7 +885,7 @@ impl OpExecute for LDH_xC_A {
 // Load (0xFF00 + N) into A
 create_opcode_struct!(LDH_A_xN);
 impl OpExecute for LDH_A_xN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = 0xFF00 + self.b2 as u16;
         registers.a = memory.read_byte(address);
         registers.pc += 2;
@@ -905,7 +896,7 @@ impl OpExecute for LDH_A_xN {
 // Load A into (0xFF00 + N)
 create_opcode_struct!(LDH_xN_A);
 impl OpExecute for LDH_xN_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = 0xFF00 + self.b2 as u16;
         memory.write_byte(address, registers.a);
         registers.pc += 2;
@@ -916,7 +907,7 @@ impl OpExecute for LDH_xN_A {
 // Load (HL) into A. Decrement HL.
 create_opcode_struct!(LDD_A_xHL);
 impl OpExecute for LDD_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         decrement_register_pair(&mut registers.h, &mut registers.l);
@@ -928,7 +919,7 @@ impl OpExecute for LDD_A_xHL {
 // Load A into (HL). Decrement HL.
 create_opcode_struct!(LDD_xHL_A);
 impl OpExecute for LDD_xHL_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         decrement_register_pair(&mut registers.h, &mut registers.l);
@@ -940,7 +931,7 @@ impl OpExecute for LDD_xHL_A {
 // Load (HL) into A. Increment HL.
 create_opcode_struct!(LDI_A_xHL);
 impl OpExecute for LDI_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         registers.a = memory.read_byte(address);
         increment_register_pair(&mut registers.h, &mut registers.l);
@@ -952,7 +943,7 @@ impl OpExecute for LDI_A_xHL {
 // Load A into (HL). Decrement HL.
 create_opcode_struct!(LDI_xHL_A);
 impl OpExecute for LDI_xHL_A {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         memory.write_byte(address, registers.a);
         increment_register_pair(&mut registers.h, &mut registers.l);
@@ -968,7 +959,7 @@ macro_rules! ld_rr_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let value = to_u16(self.b3, self.b2);
                 store_value_in_register_pair(value, &mut registers.$reg_high, &mut registers.$reg_low);
                 registers.pc += 3;
@@ -986,7 +977,7 @@ ld_rr_nn!(
 // Load 16-bit immediate into stack pointer
 create_opcode_struct!(LD_SP_NN);
 impl OpExecute for LD_SP_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.sp = to_u16(self.b3, self.b2);
         registers.pc += 3;
         registers.cycles_of_last_command = 12;
@@ -996,7 +987,7 @@ impl OpExecute for LD_SP_NN {
 // Load 16-bit immediate into stack pointer
 create_opcode_struct!(LD_SP_HL);
 impl OpExecute for LD_SP_HL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.sp = to_u16(registers.h, registers.l);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -1006,7 +997,7 @@ impl OpExecute for LD_SP_HL {
 // Put SP + n effective address into HL
 create_opcode_struct!(LDHL_SP_N);
 impl OpExecute for LDHL_SP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let address = registers.sp + self.b2 as u16;
         store_value_in_register_pair(address, &mut registers.h, &mut registers.l);
         registers.pc += 2;
@@ -1017,7 +1008,7 @@ impl OpExecute for LDHL_SP_N {
 // Save SP to given address
 create_opcode_struct!(LD_xNN_SP);
 impl OpExecute for LD_xNN_SP {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = self.b2 as u16 + (self.b3 as u16) << 8;
         memory.write_word(address, registers.sp);
         registers.pc += 3;
@@ -1030,7 +1021,7 @@ macro_rules! push_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 memory.write_byte(registers.sp, registers.$reg_high);
                 memory.write_byte(registers.sp - 1, registers.$reg_low);
                 registers.sp -= 2;
@@ -1052,7 +1043,7 @@ macro_rules! pop_nn {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 registers.sp += 2;
                 registers.$reg_high = memory.read_byte(registers.sp);
                 registers.$reg_low = memory.read_byte(registers.sp - 1);
@@ -1074,7 +1065,7 @@ macro_rules! add_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let sum = (Wrapping(a) + Wrapping(r)).0;
@@ -1101,7 +1092,7 @@ add_a_r!(
 
 create_opcode_struct!(ADD_A_xHL);
 impl OpExecute for ADD_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1118,7 +1109,7 @@ impl OpExecute for ADD_A_xHL {
 
 create_opcode_struct!(ADD_A_N);
 impl OpExecute for ADD_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let sum = (Wrapping(a) + Wrapping(self.b2)).0;
         registers.set_zero(sum == 0);
@@ -1136,7 +1127,7 @@ macro_rules! adc_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
@@ -1164,7 +1155,7 @@ adc_a_r!(
 
 create_opcode_struct!(ADC_A_xHL);
 impl OpExecute for ADC_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1182,7 +1173,7 @@ impl OpExecute for ADC_A_xHL {
 
 create_opcode_struct!(ADC_A_N);
 impl OpExecute for ADC_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let carry = registers.get_carry() as u8;
         let sum = (Wrapping(a) + Wrapping(self.b2) + Wrapping(carry)).0;
@@ -1201,7 +1192,7 @@ macro_rules! sub_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let difference = (Wrapping(a) - Wrapping(r)).0;
@@ -1228,7 +1219,7 @@ sub_a_r!(
 
 create_opcode_struct!(SUB_A_xHL);
 impl OpExecute for SUB_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1245,7 +1236,7 @@ impl OpExecute for SUB_A_xHL {
 
 create_opcode_struct!(SUB_A_N);
 impl OpExecute for SUB_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
@@ -1264,7 +1255,7 @@ macro_rules! sbc_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
@@ -1293,7 +1284,7 @@ sbc_a_r!(
 
 create_opcode_struct!(SBC_A_xHL);
 impl OpExecute for SBC_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1312,7 +1303,7 @@ impl OpExecute for SBC_A_xHL {
 
 create_opcode_struct!(SBC_A_N);
 impl OpExecute for SBC_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let val = self.b2;
         let carry = registers.get_carry() as u8;
@@ -1333,7 +1324,7 @@ macro_rules! and_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 registers.a &= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1358,7 +1349,7 @@ and_a_r!(
 
 create_opcode_struct!(AND_A_xHL);
 impl OpExecute for AND_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a &= val;
@@ -1374,7 +1365,7 @@ impl OpExecute for AND_A_xHL {
 
 create_opcode_struct!(AND_A_N);
 impl OpExecute for AND_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = self.b2;
         registers.a &= val;
         let zero = registers.a == 0;
@@ -1392,7 +1383,7 @@ macro_rules! or_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 registers.a |= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1417,7 +1408,7 @@ or_a_r!(
 
 create_opcode_struct!(OR_A_xHL);
 impl OpExecute for OR_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a |= val;
@@ -1433,7 +1424,7 @@ impl OpExecute for OR_A_xHL {
 
 create_opcode_struct!(OR_A_N);
 impl OpExecute for OR_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = self.b2;
         registers.a |= val;
         let zero = registers.a == 0;
@@ -1451,7 +1442,7 @@ macro_rules! xor_a_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 registers.a ^= registers.$reg;
                 let zero = registers.a == 0;
                 registers.set_zero(zero);
@@ -1476,7 +1467,7 @@ xor_a_r!(
 
 create_opcode_struct!(XOR_A_xHL);
 impl OpExecute for XOR_A_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         registers.a ^= val;
@@ -1492,7 +1483,7 @@ impl OpExecute for XOR_A_xHL {
 
 create_opcode_struct!(XOR_A_N);
 impl OpExecute for XOR_A_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = self.b2;
         registers.a ^= val;
         let zero = registers.a == 0;
@@ -1510,7 +1501,7 @@ macro_rules! cp_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
                 let difference = (Wrapping(a) - Wrapping(r)).0;
@@ -1536,7 +1527,7 @@ cp_r!(
 
 create_opcode_struct!(CP_xHL);
 impl OpExecute for CP_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
@@ -1552,7 +1543,7 @@ impl OpExecute for CP_xHL {
 
 create_opcode_struct!(CP_N);
 impl OpExecute for CP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let val = self.b2;
         let difference = (Wrapping(a) - Wrapping(val)).0;
@@ -1570,7 +1561,7 @@ macro_rules! inc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let halfcarry = (val & 0xF) == 0xF;
                 registers.set_halfcarry(halfcarry);
@@ -1596,7 +1587,7 @@ inc_r!(
 
 create_opcode_struct!(INC_xHL);
 impl OpExecute for INC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let halfcarry = (val & 0xF) == 0xF;
@@ -1615,7 +1606,7 @@ macro_rules! dec_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let new_val = val.wrapping_sub(1);
                 registers.$reg = new_val;
@@ -1641,7 +1632,7 @@ dec_r!(
 
 create_opcode_struct!(DEC_xHL);
 impl OpExecute for DEC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let new_val = val.wrapping_sub(1);
@@ -1660,7 +1651,7 @@ macro_rules! add_hl_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let hl = to_u16(registers.h, registers.l);
                 let rr = to_u16(registers.$reg_high, registers.$reg_low);
                 let sum = hl.wrapping_add(rr);
@@ -1682,7 +1673,7 @@ add_hl_rr!(
 
 create_opcode_struct!(ADD_HL_SP);
 impl OpExecute for ADD_HL_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let hl = to_u16(registers.h, registers.l);
         let sum = hl.wrapping_add(registers.sp);
         store_value_in_register_pair(sum, &mut registers.h, &mut registers.l);
@@ -1696,7 +1687,7 @@ impl OpExecute for ADD_HL_SP {
 
 create_opcode_struct!(ADD_SP_N);
 impl OpExecute for ADD_SP_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let sp = registers.sp;
         let sum = sp.wrapping_add(self.b2 as u16);
         registers.sp = sum;
@@ -1714,7 +1705,7 @@ macro_rules! inc_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = to_u16(registers.$reg_high, registers.$reg_low);
                 let new_val = val.wrapping_add(1);
                 store_value_in_register_pair(new_val, &mut registers.$reg_high, &mut registers.$reg_low);
@@ -1732,7 +1723,7 @@ inc_rr!(
 
 create_opcode_struct!(INC_SP);
 impl OpExecute for INC_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.sp = registers.sp.wrapping_add(1);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -1744,7 +1735,7 @@ macro_rules! dec_rr {
     ($($reg_high:ident, $reg_low:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = to_u16(registers.$reg_high, registers.$reg_low);
                 let new_val = val.wrapping_sub(1);
                 store_value_in_register_pair(new_val, &mut registers.$reg_high, &mut registers.$reg_low);
@@ -1762,7 +1753,7 @@ dec_rr!(
 
 create_opcode_struct!(DEC_SP);
 impl OpExecute for DEC_SP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.sp = registers.sp.wrapping_sub(1);
         registers.pc += 1;
         registers.cycles_of_last_command = 8;
@@ -1774,7 +1765,7 @@ macro_rules! swap_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let high = (val & 0xF0) >> 4;
                 let low = val & 0xF;
@@ -1802,7 +1793,7 @@ swap_r!(
 
 create_opcode_struct!(SWAP_xHL);
 impl OpExecute for SWAP_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let high = (val & 0xF0) >> 4;
@@ -1821,7 +1812,7 @@ impl OpExecute for SWAP_xHL {
 // BCD correction for register A
 create_opcode_struct!(DAA);
 impl OpExecute for DAA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let mut val = registers.a;
         if (val & 0xF) > 0x9 || registers.get_halfcarry() {
             val += 0x6;
@@ -1843,7 +1834,7 @@ impl OpExecute for DAA {
 // Complement A register
 create_opcode_struct!(CPL);
 impl OpExecute for CPL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.a ^= 0xFF;
         registers.set_operation(true);
         registers.set_halfcarry(true);
@@ -1855,7 +1846,7 @@ impl OpExecute for CPL {
 // Complement carry flag
 create_opcode_struct!(CCF);
 impl OpExecute for CCF {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let carry = registers.get_carry();
         registers.set_carry(!carry);
         registers.set_operation(false);
@@ -1868,7 +1859,7 @@ impl OpExecute for CCF {
 // Set carry flag
 create_opcode_struct!(SCF);
 impl OpExecute for SCF {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.set_carry(true);
         registers.set_operation(false);
         registers.set_halfcarry(false);
@@ -1880,7 +1871,7 @@ impl OpExecute for SCF {
 // No operation
 create_opcode_struct!(NOP);
 impl OpExecute for NOP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1889,7 +1880,7 @@ impl OpExecute for NOP {
 // Power down CPU until an interrupt occurs
 create_opcode_struct!(HALT);
 impl OpExecute for HALT {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -1899,7 +1890,7 @@ impl OpExecute for HALT {
 // Halt CPU & LCD display until button pressed
 create_opcode_struct!(STOP);
 impl OpExecute for STOP {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
         registers.pc += 2;
         registers.cycles_of_last_command = 4;
@@ -1909,7 +1900,7 @@ impl OpExecute for STOP {
 // Disables interrupts after the next instruction is executed
 create_opcode_struct!(DI);
 impl OpExecute for DI {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -1919,7 +1910,7 @@ impl OpExecute for DI {
 // Enables interrupts after the next instruction is executed
 create_opcode_struct!(EI);
 impl OpExecute for EI {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
@@ -1929,7 +1920,7 @@ impl OpExecute for EI {
 // Rotate A left
 create_opcode_struct!(RLCA);
 impl OpExecute for RLCA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = registers.a;
         let carry = (val & 0x80) >> 7;
         let new_val = (val << 1) + carry;
@@ -1946,7 +1937,7 @@ impl OpExecute for RLCA {
 // Rotate A left through carry flag
 create_opcode_struct!(RLA);
 impl OpExecute for RLA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = registers.a;
         let carry_in = registers.get_carry() as u8;
         let carry_out = (val & 0x80) != 0;
@@ -1964,7 +1955,7 @@ impl OpExecute for RLA {
 // Rotate A right
 create_opcode_struct!(RRCA);
 impl OpExecute for RRCA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = registers.a;
         let carry = val & 0x1;
         let new_val = (val >> 1) + carry * 0x80;
@@ -1981,7 +1972,7 @@ impl OpExecute for RRCA {
 // Rotate A right through carry flag
 create_opcode_struct!(RRA);
 impl OpExecute for RRA {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let val = registers.a;
         let carry_in = registers.get_carry() as u8;
         let carry_out = (val & 0x1) != 0;
@@ -2001,7 +1992,7 @@ macro_rules! rlc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry = (val & 0x80) >> 7;
                 let new_val = (val << 1) + carry;
@@ -2028,7 +2019,7 @@ rlc_r!(
 
 create_opcode_struct!(RLC_xHL);
 impl OpExecute for RLC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x80) >> 7;
@@ -2048,7 +2039,7 @@ macro_rules! rl_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry_in = registers.get_carry() as u8;
                 let carry_out = (val & 0x80) != 0;
@@ -2076,7 +2067,7 @@ rl_r!(
 
 create_opcode_struct!(RL_xHL);
 impl OpExecute for RL_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry_in = registers.get_carry() as u8;
@@ -2097,7 +2088,7 @@ macro_rules! rrc_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry = val & 0x1;
                 let new_val = (val >> 1) + carry * 0x80;
@@ -2124,7 +2115,7 @@ rrc_r!(
 
 create_opcode_struct!(RRC_xHL);
 impl OpExecute for RRC_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = val & 0x1;
@@ -2144,7 +2135,7 @@ macro_rules! rr_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry_in = registers.get_carry() as u8;
                 let carry_out = (val & 0x1) != 0;
@@ -2172,7 +2163,7 @@ rr_r!(
 
 create_opcode_struct!(RR_xHL);
 impl OpExecute for RR_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry_in = registers.get_carry() as u8;
@@ -2193,7 +2184,7 @@ macro_rules! sla_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry = (val & 0x80) != 0;
                 let new_val = val << 1;
@@ -2220,7 +2211,7 @@ sla_r!(
 
 create_opcode_struct!(SLA_xHL);
 impl OpExecute for SLA_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x80) != 0;
@@ -2240,7 +2231,7 @@ macro_rules! sra_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry = (val & 0x1) != 0;
                 let msb = val & 0x80;
@@ -2269,7 +2260,7 @@ sra_r!(
 
 create_opcode_struct!(SRA_xHL);
 impl OpExecute for SRA_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x1) != 0;
@@ -2291,7 +2282,7 @@ macro_rules! srl_r {
     ($($reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let carry = (val & 0x1) != 0;
                 let new_val = val >> 1;
@@ -2318,7 +2309,7 @@ srl_r!(
 
 create_opcode_struct!(SRL_xHL);
 impl OpExecute for SRL_xHL {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = (val & 0x1) != 0;
@@ -2338,7 +2329,7 @@ macro_rules! bit_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let reg = registers.$reg;
                 let bit = (0x1 << $bit) & reg != 0;
                 registers.set_zero(!bit);
@@ -2413,7 +2404,7 @@ macro_rules! bit_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.h, registers.l);
                 let reg = memory.read_byte(address);
                 let bit = (0x1 << $bit) & reg != 0;
@@ -2442,7 +2433,7 @@ macro_rules! set_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let bit = 0x1 << $bit;
                 let new_val = val | bit;
@@ -2516,7 +2507,7 @@ macro_rules! set_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.h, registers.l);
                 let val = memory.read_byte(address);
                 let bit = 0x1 << $bit;
@@ -2544,7 +2535,7 @@ macro_rules! res_b_r {
     ($($bit:expr, $reg:ident : $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let val = registers.$reg;
                 let bit = 0x1 << $bit;
                 let new_val = val & !bit;
@@ -2618,7 +2609,7 @@ macro_rules! res_b_hl {
     ($($bit:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.h, registers.l);
                 let val = memory.read_byte(address);
                 let bit = 0x1 << $bit;
@@ -2644,7 +2635,7 @@ res_b_hl!(
 // Jump to address nn
 create_opcode_struct!(JP_NN);
 impl OpExecute for JP_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let address = to_u16(self.b3, self.b2);
         registers.pc = address;
         registers.cycles_of_last_command = 12;
@@ -2654,7 +2645,7 @@ impl OpExecute for JP_NN {
 // Jump to address nn if Z flag is reset
 create_opcode_struct!(JP_NZ_NN);
 impl OpExecute for JP_NZ_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_zero() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2668,7 +2659,7 @@ impl OpExecute for JP_NZ_NN {
 // Jump to address nn if Z flag is set
 create_opcode_struct!(JP_Z_NN);
 impl OpExecute for JP_Z_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_zero() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2682,7 +2673,7 @@ impl OpExecute for JP_Z_NN {
 // Jump to address nn if C flag is reset
 create_opcode_struct!(JP_NC_NN);
 impl OpExecute for JP_NC_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_carry() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2696,7 +2687,7 @@ impl OpExecute for JP_NC_NN {
 // Jump to address nn if C flag is set
 create_opcode_struct!(JP_C_NN);
 impl OpExecute for JP_C_NN {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_carry() {
         let address = to_u16(self.b3, self.b2);
             registers.pc = address;
@@ -2710,7 +2701,7 @@ impl OpExecute for JP_C_NN {
 // Jump to address in HL
 create_opcode_struct!(JP_xHL);
 impl OpExecute for JP_xHL {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let address = to_u16(registers.h, registers.l);
         registers.pc = address;
         registers.cycles_of_last_command = 4;
@@ -2720,7 +2711,7 @@ impl OpExecute for JP_xHL {
 // Jump to n + current address
 create_opcode_struct!(JR_N);
 impl OpExecute for JR_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         registers.cycles_of_last_command = 8;
     }
@@ -2729,7 +2720,7 @@ impl OpExecute for JR_N {
 // Jump to n + current address if Z flag is reset
 create_opcode_struct!(JR_NZ_N);
 impl OpExecute for JR_NZ_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_zero() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2742,7 +2733,7 @@ impl OpExecute for JR_NZ_N {
 // Jump to n + current address if Z flag is set
 create_opcode_struct!(JR_Z_N);
 impl OpExecute for JR_Z_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_zero() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2755,7 +2746,7 @@ impl OpExecute for JR_Z_N {
 // Jump to n + current address if C flag is reset
 create_opcode_struct!(JR_NC_N);
 impl OpExecute for JR_NC_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_carry() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2768,7 +2759,7 @@ impl OpExecute for JR_NC_N {
 // Jump to n + current address if C flag is set
 create_opcode_struct!(JR_C_N);
 impl OpExecute for JR_C_N {
-    fn execute(&self, registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_carry() {
             registers.pc = ((registers.pc as i32) + self.b2 as i8 as i32) as u16;
         } else {
@@ -2781,7 +2772,7 @@ impl OpExecute for JR_C_N {
 // Push address of next instruction onto stack and then jump to address nn
 create_opcode_struct!(CALL_NN);
 impl OpExecute for CALL_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         memory.write_word(registers.sp - 1, registers.pc + 3);
         registers.sp -= 2;
         let address = to_u16(self.b3, self.b2);
@@ -2793,7 +2784,7 @@ impl OpExecute for CALL_NN {
 // Call address nn if Z flag is reset
 create_opcode_struct!(CALL_NZ_NN);
 impl OpExecute for CALL_NZ_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_zero() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2809,7 +2800,7 @@ impl OpExecute for CALL_NZ_NN {
 // Call address nn if Z flag is set
 create_opcode_struct!(CALL_Z_NN);
 impl OpExecute for CALL_Z_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_zero() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2825,7 +2816,7 @@ impl OpExecute for CALL_Z_NN {
 // Call address nn if C flag is reset
 create_opcode_struct!(CALL_NC_NN);
 impl OpExecute for CALL_NC_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_carry() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2841,7 +2832,7 @@ impl OpExecute for CALL_NC_NN {
 // Call address nn if C flag is set
 create_opcode_struct!(CALL_C_NN);
 impl OpExecute for CALL_C_NN {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_carry() {
             memory.write_word(registers.sp - 1, registers.pc + 3);
             registers.sp -= 2;
@@ -2858,7 +2849,7 @@ macro_rules! rst_n {
     ($($address:expr, $name:ident),*) => {$(
         create_opcode_struct!($name);
         impl OpExecute for $name {
-            fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+            fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 memory.write_word(registers.sp - 1, registers.pc + 1);
                 registers.sp -= 2;
                 registers.pc = $address;
@@ -2881,7 +2872,7 @@ rst_n!(
 // Return
 create_opcode_struct!(RET);
 impl OpExecute for RET {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         let address = memory.read_word(registers.sp + 1);
         registers.sp += 2;
         registers.pc = address;
@@ -2892,7 +2883,7 @@ impl OpExecute for RET {
 // Return if Z flag is reset
 create_opcode_struct!(RET_NZ);
 impl OpExecute for RET_NZ {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_zero() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -2907,7 +2898,7 @@ impl OpExecute for RET_NZ {
 // Return if Z flag is set
 create_opcode_struct!(RET_Z);
 impl OpExecute for RET_Z {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_zero() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -2922,7 +2913,7 @@ impl OpExecute for RET_Z {
 // Return if C flag is reset
 create_opcode_struct!(RET_NC);
 impl OpExecute for RET_NC {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_carry() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -2937,7 +2928,7 @@ impl OpExecute for RET_NC {
 // Return if C flag is set
 create_opcode_struct!(RET_C);
 impl OpExecute for RET_C {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_carry() {
             let address = memory.read_word(registers.sp + 1);
             registers.sp += 2;
@@ -2952,7 +2943,7 @@ impl OpExecute for RET_C {
 // Return, then enable interrupts
 create_opcode_struct!(RETI);
 impl OpExecute for RETI {
-    fn execute(&self, registers: &mut Registers, memory: &mut BlockMemory) {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         //TODO: Implement
         let address = memory.read_word(registers.sp + 1);
         registers.sp += 2;
@@ -2964,7 +2955,7 @@ impl OpExecute for RETI {
 // Unused operation
 create_opcode_struct!(XX);
 impl OpExecute for XX {
-    fn execute(&self, _registers: &mut Registers, _memory: &mut BlockMemory) {
+    fn execute(&self, _registers: &mut Registers, _memory: &mut Memory) {
         panic!("Tried to call unused opcode");
     }
 }
