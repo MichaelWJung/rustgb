@@ -658,7 +658,7 @@ trait OpExecute {
 }
 
 fn to_u16(h: u8, l: u8) -> u16 {
-    (h as u16) << 8 + l as u16
+    ((h as u16) << 8) + l as u16
 }
 
 fn store_value_in_register_pair(value: u16, h: &mut u8, l: &mut u8) {

@@ -18,7 +18,7 @@ impl<'a> Gpu<'a> {
             mode: Mode::HorizontalBlank,
             mode_clock: 0,
             vram: BlockMemory::new(0x2000),
-            sprites: BlockMemory::new(0xA0),
+            sprites: BlockMemory::new(0x100),
             io,
             display,
         }
