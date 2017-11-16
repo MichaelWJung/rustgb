@@ -2,18 +2,17 @@ use gpu::Gpu;
 use memory::Memory;
 use std::cell::RefCell;
 use std::num::Wrapping;
-use std::rc::Rc;
 
-pub struct Cpu<'a, M> {
+pub struct Cpu<'a, 'b: 'a, M> {
     registers: Registers,
     memory: M,
-    gpu: Rc<RefCell<Gpu<'a>>>,
+    gpu: &'a RefCell<Gpu<'b>>,
     clock: u32,
 }
 
-impl<'a, M> Cpu<'a, M>
+impl<'a, 'b: 'a, M> Cpu<'a, 'b, M>
     where M: Memory {
-    pub fn new(memory: M, gpu: Rc<RefCell<Gpu>>) -> Cpu<M> {
+    pub fn new(memory: M, gpu: &'a RefCell<Gpu<'b>>) -> Cpu<'a, 'b, M> {
         Cpu {
             registers: Registers::new(),
             memory,

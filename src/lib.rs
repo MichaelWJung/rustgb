@@ -7,7 +7,6 @@ mod memory;
 
 use std::cell::RefCell;
 use std::fs::File;
-use std::rc::Rc;
 use std::{thread, time};
 
 pub fn run(file: &mut File) {
@@ -24,10 +23,10 @@ pub fn run(file: &mut File) {
     //let mut memory = memory::BlockMemory::new();
     //memory.load_rom(file);
 
-    let gpu = Rc::new(RefCell::new(gpu::Gpu::new(display)));
-    let memory_map = memory::MemoryMap::new(gpu.clone());
-    let mut cpu = cpu::Cpu::new(memory_map, gpu);
-    //let mut cpu = cpu::Cpu::new(memory);
+    let gpu = RefCell::new(gpu::Gpu::new(display));
+    let memory_map = memory::MemoryMap::new(&gpu);
+    let mut cpu = cpu::Cpu::new(memory_map, &gpu);
+    //let mut cpu = cpu::Cpu::new(memory)'a, ;
     //loop {
     //    for _ in 0..10 {
     //        cpu.cycle();

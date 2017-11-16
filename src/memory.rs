@@ -3,7 +3,6 @@ use gpu::Gpu;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-use std::rc::Rc;
 
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8;
@@ -21,7 +20,7 @@ pub trait Memory {
     }
 }
 
-pub struct MemoryMap<'a> {
+pub struct MemoryMap<'a, 'b: 'a> {
     bios_active: bool,
     bios: BlockMemory,
     rom: BlockMemory,
@@ -29,11 +28,11 @@ pub struct MemoryMap<'a> {
     working_ram: BlockMemory,
     zero_page: BlockMemory,
     io: BlockMemory,
-    gpu: Rc<RefCell<Gpu<'a>>>,
+    gpu: &'a RefCell<Gpu<'b>>,
 }
 
-impl<'a> MemoryMap<'a> {
-    pub fn new(gpu: Rc<RefCell<Gpu>>) -> MemoryMap {
+impl<'a, 'b: 'a> MemoryMap<'a, 'b> {
+    pub fn new(gpu: &'a RefCell<Gpu<'b>>) -> MemoryMap<'a, 'b> {
         MemoryMap {
             bios_active: true,
             bios: BlockMemory::new(0x100),
@@ -61,7 +60,7 @@ impl<'a> MemoryMap<'a> {
     }
 }
 
-impl<'a> Memory for MemoryMap<'a> {
+impl<'a, 'b: 'a> Memory for MemoryMap<'a, 'b> {
     fn read_byte(&self, address: u16) -> u8 {
         let (memory_type, address) = self.address_to_type(address);
         let gpu = self.gpu.borrow();
