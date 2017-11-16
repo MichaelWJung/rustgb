@@ -1,23 +1,26 @@
 use display::Display;
 use memory::{Memory, BlockMemory};
+use std::cell::RefCell;
+use std::ops::Deref;
+use std::rc::Rc;
 
 pub struct Gpu<'a> {
     mode: Mode,
     mode_clock: u32,
-    line: u8,
     vram: BlockMemory,
     sprites: BlockMemory,
+    io: &'a RefCell<BlockMemory>,
     display: Display<'a>,
 }
 
 impl<'a> Gpu<'a> {
-    pub fn new(display: Display) -> Gpu {
+    pub fn new(display: Display<'a>, io: &'a RefCell<BlockMemory>) -> Gpu<'a> {
         Gpu {
             mode: Mode::HorizontalBlank,
             mode_clock: 0,
-            line: 0,
             vram: BlockMemory::new(0x2000),
             sprites: BlockMemory::new(0xA0),
+            io,
             display,
         }
     }
@@ -58,9 +61,8 @@ impl<'a> Gpu<'a> {
             Mode::HorizontalBlank => {
                 if self.mode_clock >= HORIZONTAL_BLANK_TIME {
                     self.mode_clock %= HORIZONTAL_BLANK_TIME;
-                    let new_line = self.line + 1;
-                    self.set_current_line(new_line);
-                    if self.line >= DIM_Y - 1 {
+                    let new_line = self.increment_current_line();
+                    if new_line >= DIM_Y - 1 {
                         self.mode = Mode::VerticalBlank;
                         self.render_screen();
                     } else {
@@ -72,45 +74,48 @@ impl<'a> Gpu<'a> {
                 if self.mode_clock >= VERTICAL_BLANK_TIME {
                     self.mode_clock %= VERTICAL_BLANK_TIME;
                     self.mode = Mode::ScanlineOam;
-                    self.set_current_line(0);
+                    self.reset_current_line();
                 }
             }
         }
     }
 
-    fn get_color(vram: &BlockMemory, tile: u16, x: u16, y: u16) -> u8 {
+    fn get_color(vram: &BlockMemory, io: &BlockMemory, tile: u16, x: u16, y: u16) -> u8 {
         let bit = 1 << (7 - x);
         let mut offset = tile * 0x10;
         offset += y as u16 * 0x2;
         let low_bit = (vram.read_byte(offset) & bit) != 0;
         let high_bit = (vram.read_byte(offset + 1) & bit) != 0;
-        low_bit as u8 + high_bit as u8 * 2
+        let color = low_bit as u8 + high_bit as u8 * 2;
+        let palette = io.read_byte(0x47);
+        palette >> (color * 2) & 3
     }
 
     fn render_scanline(&mut self) {
-        let mut map_offset = if Self::bgmap(&self.sprites) {
+        let mut map_offset = if Self::bg_on(&self.io.borrow()) {
             OFFSET_TILE_MAP_1
         } else {
             OFFSET_TILE_MAP_0
         };
-        map_offset += ((self.line as u16 + self.scy()) & 0xFF) >> 3;
+        map_offset += ((self.get_current_line() as u16 + self.scy()) & 0xFF) >> 3;
         let mut line_offset = self.scx() >> 3;
-        let y = (self.line as u16 + self.scy()) & 0x7;
+        let y = (self.get_current_line() as u16 + self.scy()) & 0x7;
         let mut x = self.scx() & 0x7;
         let mut tile = self.vram.read_byte(map_offset + line_offset) as u16;
-        if Self::bgmap(&self.sprites) && tile < 128 {
+        if Self::bg_on(&self.io.borrow()) && tile < 128 {
             tile += 256;
         }
 
-        let display_line = self.display.get_line_mut(self.line);
+        let current_line = self.get_current_line();
+        let display_line = self.display.get_line_mut(current_line);
         for i in 0..DIM_X {
-            let color = Self::get_color(&self.vram, tile, x, y);
+            let color = Self::get_color(&self.vram, &self.io.borrow(), tile, x, y);
             display_line[i] = color;
             x = x % 8;
             if x == 0 {
                 line_offset = (line_offset + 1) & 0x1F;
                 tile = self.vram.read_byte(map_offset + line_offset) as u16;
-                if Self::bgmap(&self.sprites) && tile < 128 {
+                if Self::bg_on(&self.io.borrow()) && tile < 128 {
                     tile += 256;
                 }
             }
@@ -121,21 +126,66 @@ impl<'a> Gpu<'a> {
         self.display.redraw();
     }
 
-    fn bgmap(sprites: &BlockMemory) -> bool {
-        false
-    }
-
     fn scx(&self) -> u16 {
-        self.sprites.read_byte(0x143) as u16
+        self.io.borrow().read_byte(0x43) as u16
     }
 
     fn scy(&self) -> u16 {
-        self.sprites.read_byte(0x142) as u16
+        self.io.borrow().read_byte(0x42) as u16
     }
 
-    fn set_current_line(&mut self, line: u8) {
-        self.line = line;
-        self.sprites.write_byte(0x144, line);
+    fn increment_current_line(&mut self) -> u8 {
+        let current_line = self.io.borrow_mut().read_byte(0x44) + 1;
+        self.io.borrow_mut().write_byte(0x44, current_line);
+        current_line
+    }
+
+    fn get_current_line(&self) -> u8 {
+        self.io.borrow().read_byte(0x44)
+    }
+
+    fn reset_current_line(&mut self) {
+        self.io.borrow_mut().write_byte(0x44, 0);
+    }
+
+    fn get_gpu_control_register_static(io: &BlockMemory) -> u8 {
+        io.read_byte(0x40)
+    }
+
+    fn get_gpu_control_register(&self) -> u8 {
+        Self::get_gpu_control_register_static(self.io.borrow().deref())
+    }
+
+    fn bg_on(io: &BlockMemory) -> bool {
+        Self::get_gpu_control_register_static(io) & 1 != 0
+    }
+
+    fn sprites_on(&self) -> bool {
+        self.get_gpu_control_register() & (1 << 1) != 0
+    }
+
+    fn large_sprites(&self) -> bool {
+        self.get_gpu_control_register() & (1 << 2) != 0
+    }
+
+    fn bg_tile_map(&self) -> u8 {
+        (self.get_gpu_control_register() & (1 << 3) != 0) as u8
+    }
+
+    fn bg_tile_set(&self) -> u8 {
+        (self.get_gpu_control_register() & (1 << 4) != 0) as u8
+    }
+
+    fn window_on(&self) -> bool {
+        self.get_gpu_control_register() & (1 << 5) != 0
+    }
+
+    fn window_tile_map(&self) -> u8 {
+        (self.get_gpu_control_register() & (1 << 6) != 0) as u8
+    }
+
+    fn display_on(&self) -> bool {
+        self.get_gpu_control_register() & (1 << 7) != 0
     }
 }
 
@@ -147,6 +197,7 @@ const DIM_X: usize = 160;
 const DIM_Y: u8 = 144;
 const OFFSET_TILE_MAP_0: u16 = 0x1800;
 const OFFSET_TILE_MAP_1: u16 = 0x1C00;
+pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
 
 enum Mode {
     HorizontalBlank = 0,

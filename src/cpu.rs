@@ -3,6 +3,8 @@ use memory::Memory;
 use std::cell::RefCell;
 use std::num::Wrapping;
 
+pub const CLOCK_SPEED_IN_HERTZ: u64 = 4_194_304;
+
 pub struct Cpu<'a, 'b: 'a, M> {
     registers: Registers,
     memory: M,
@@ -21,10 +23,15 @@ impl<'a, 'b: 'a, M> Cpu<'a, 'b, M>
         }
     }
 
+    pub fn get_clock(&self) -> u32 {
+        self.clock
+    }
+
     pub fn cycle(&mut self) {
         let opcode = self.fetch_opcode();
         self.execute_opcode(opcode);
         self.clock += self.registers.cycles_of_last_command as u32;
+        self.gpu.borrow_mut().step(self.registers.cycles_of_last_command);
     }
 
     fn fetch_opcode(&self) -> Opcode {
@@ -570,6 +577,8 @@ fn create_and_execute<Op: OpConstruct + OpExecute>(
 
 fn execute_extended_opcode(
     opcode: Opcode, registers: &mut Registers, memory: &mut Memory) {
+    let opcode_function = EXTENDED_OPCODE_MAP[opcode.b2 as usize];
+    opcode_function(opcode, registers, memory);
 }
 
 #[derive(Copy, Clone)]

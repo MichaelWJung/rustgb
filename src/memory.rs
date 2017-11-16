@@ -3,6 +3,7 @@ use gpu::Gpu;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
+use std::ops::{Deref, DerefMut};
 
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8;
@@ -22,25 +23,30 @@ pub trait Memory {
 
 pub struct MemoryMap<'a, 'b: 'a> {
     bios_active: bool,
-    bios: BlockMemory,
+    bios: &'a mut BlockMemory,
     rom: BlockMemory,
     external_ram: BlockMemory,
     working_ram: BlockMemory,
     zero_page: BlockMemory,
-    io: BlockMemory,
+    io: &'a RefCell<BlockMemory>,
     gpu: &'a RefCell<Gpu<'b>>,
 }
 
 impl<'a, 'b: 'a> MemoryMap<'a, 'b> {
-    pub fn new(gpu: &'a RefCell<Gpu<'b>>) -> MemoryMap<'a, 'b> {
+    pub fn new(
+        bios: &'a mut BlockMemory,
+        gpu: &'a RefCell<Gpu<'b>>,
+        rom: BlockMemory,
+        io: &'a RefCell<BlockMemory>
+        ) -> MemoryMap<'a, 'b> {
         MemoryMap {
             bios_active: true,
-            bios: BlockMemory::new(0x100),
-            rom: BlockMemory::new(0x4000),
+            bios,
+            rom,
             external_ram: BlockMemory::new(0x4000),
             working_ram: BlockMemory::new(0x4000),
             zero_page: BlockMemory::new(0x4000),
-            io: BlockMemory::new(0x4000),
+            io,
             gpu
         }
     }
@@ -64,15 +70,16 @@ impl<'a, 'b: 'a> Memory for MemoryMap<'a, 'b> {
     fn read_byte(&self, address: u16) -> u8 {
         let (memory_type, address) = self.address_to_type(address);
         let gpu = self.gpu.borrow();
+        let io = self.io.borrow();
         let memory = match memory_type {
-            MemoryType::Bios => &self.bios,
-            MemoryType::Rom => &self.rom,
             MemoryType::GraphicsVram => gpu.get_vram(),
+            MemoryType::Bios => self.bios,
+            MemoryType::Rom => &self.rom,
             MemoryType::ExternalRam => &self.external_ram,
             MemoryType::WorkingRam => &self.working_ram,
             MemoryType::Sprites => gpu.get_vram(),
             MemoryType::ZeroPage => &self.zero_page,
-            MemoryType::Io => &self.io,
+            MemoryType::Io => io.deref(),
         };
         memory.read_byte(address)
     }
@@ -80,15 +87,16 @@ impl<'a, 'b: 'a> Memory for MemoryMap<'a, 'b> {
     fn write_byte(&mut self, address: u16, value: u8) {
         let (memory_type, address) = self.address_to_type(address);
         let mut gpu = self.gpu.borrow_mut();
+        let mut io = self.io.borrow_mut();
         let memory = match memory_type {
-            MemoryType::Bios => &mut self.bios,
-            MemoryType::Rom => &mut self.rom,
             MemoryType::GraphicsVram => gpu.get_vram_mut(),
+            MemoryType::Bios => self.bios,
+            MemoryType::Rom => &mut self.rom,
             MemoryType::ExternalRam => &mut self.external_ram,
             MemoryType::WorkingRam => &mut self.working_ram,
             MemoryType::Sprites => gpu.get_sprites_mut(),
             MemoryType::ZeroPage => &mut self.zero_page,
-            MemoryType::Io => &mut self.io,
+            MemoryType::Io => io.deref_mut(),
         };
         memory.write_byte(address, value)
     }
