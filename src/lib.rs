@@ -11,6 +11,8 @@ use std::path::Path;
 use std::{thread, time};
 
 const BIOS_PATH: &str = "roms/bios.gb";
+const FRAME_LENGTH_IN_S: f64 = gpu::CLOCK_TICKS_PER_FRAME as f64 / cpu::CLOCK_SPEED_IN_HERTZ as f64;
+const FRAME_LENGTH_IN_NS: u32 = (FRAME_LENGTH_IN_S * 1e9) as u32;
 
 pub fn run(file: &mut File) {
     let sdl_context = sdl2::init().unwrap();
@@ -37,16 +39,16 @@ pub fn run(file: &mut File) {
     let mut cpu = cpu::Cpu::new(memory_map, &gpu);
     let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME;
     let mut frame_start = time::Instant::now();
+    let frame_length = time::Duration::new(0, FRAME_LENGTH_IN_NS);
     loop {
         cpu.cycle();
         let clock = cpu.get_clock();
         if clock > next_frame {
             next_frame += gpu::CLOCK_TICKS_PER_FRAME;
             let duration = frame_start.elapsed();
-            let frame_length_in_s = gpu::CLOCK_TICKS_PER_FRAME as f64 / cpu::CLOCK_SPEED_IN_HERTZ as f64;
-            let frame_length_in_ns = (frame_length_in_s * 1e9) as u32;
-            let frame_length = time::Duration::new(0, frame_length_in_ns);
-            thread::sleep(duration - frame_length);
+            if frame_length > duration {
+                thread::sleep(frame_length - duration);
+            }
             frame_start = time::Instant::now();
         }
     }
