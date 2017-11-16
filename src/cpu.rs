@@ -4,7 +4,6 @@
 use gpu::Gpu;
 use memory::Memory;
 use std::cell::RefCell;
-use std::num::Wrapping;
 
 pub const CLOCK_SPEED_IN_HERTZ: u64 = 4_194_304;
 
@@ -1082,7 +1081,7 @@ macro_rules! add_a_r {
             fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
-                let sum = (Wrapping(a) + Wrapping(r)).0;
+                let sum = a.wrapping_add(r);
                 registers.set_zero(sum == 0);
                 registers.set_operation(false);
                 registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1110,7 +1109,7 @@ impl OpExecute for ADD_A_xHL {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
-        let sum = (Wrapping(a) + Wrapping(val)).0;
+        let sum = a.wrapping_add(val);
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1125,7 +1124,7 @@ create_opcode_struct!(ADD_A_N);
 impl OpExecute for ADD_A_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
-        let sum = (Wrapping(a) + Wrapping(self._b2)).0;
+        let sum = a.wrapping_add(self._b2);
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1145,7 +1144,7 @@ macro_rules! adc_a_r {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
-                let sum = (Wrapping(a) + Wrapping(r) + Wrapping(carry)).0;
+                let sum = a.wrapping_add(r).wrapping_add(carry);
                 registers.set_zero(sum == 0);
                 registers.set_operation(false);
                 registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1174,7 +1173,7 @@ impl OpExecute for ADC_A_xHL {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = registers.get_carry() as u8;
-        let sum = (Wrapping(a) + Wrapping(val) + Wrapping(carry)).0;
+        let sum = a.wrapping_add(val).wrapping_add(carry);
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1190,7 +1189,7 @@ impl OpExecute for ADC_A_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let carry = registers.get_carry() as u8;
-        let sum = (Wrapping(a) + Wrapping(self._b2) + Wrapping(carry)).0;
+        let sum = a.wrapping_add(self._b2).wrapping_add(carry);
         registers.set_zero(sum == 0);
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xF) < (a & 0xF));
@@ -1209,7 +1208,7 @@ macro_rules! sub_a_r {
             fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
-                let difference = (Wrapping(a) - Wrapping(r)).0;
+                let difference = a.wrapping_sub(r);
                 registers.set_zero(difference == 0);
                 registers.set_operation(true);
                 registers.set_halfcarry((r & 0xF) <= (a & 0xF));
@@ -1237,7 +1236,7 @@ impl OpExecute for SUB_A_xHL {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
-        let difference = (Wrapping(a) - Wrapping(val)).0;
+        let difference = a.wrapping_sub(val);
         registers.set_zero(difference == 0);
         registers.set_operation(true);
         registers.set_halfcarry((val & 0xF) <= (a & 0xF));
@@ -1253,7 +1252,7 @@ impl OpExecute for SUB_A_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let val = self._b2;
-        let difference = (Wrapping(a) - Wrapping(val)).0;
+        let difference = a.wrapping_sub(val);
         registers.set_zero(difference == 0);
         registers.set_operation(true);
         registers.set_halfcarry((val & 0xF) <= (a & 0xF));
@@ -1273,7 +1272,7 @@ macro_rules! sbc_a_r {
                 let a = registers.a;
                 let r = registers.$reg;
                 let carry = registers.get_carry() as u8;
-                let difference = (Wrapping(a) - Wrapping(r) - Wrapping(carry)).0;
+                let difference = a.wrapping_sub(r).wrapping_sub(carry);
                 let r_plus_c = r as u16 + carry as u16;
                 registers.set_zero(difference == 0);
                 registers.set_operation(true);
@@ -1303,7 +1302,7 @@ impl OpExecute for SBC_A_xHL {
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
         let carry = registers.get_carry() as u8;
-        let difference = (Wrapping(a) - Wrapping(val) - Wrapping(carry)).0;
+        let difference = a.wrapping_sub(val).wrapping_sub(carry);
         let val_plus_c = val as u16 + carry as u16;
         registers.set_zero(difference == 0);
         registers.set_operation(true);
@@ -1321,7 +1320,7 @@ impl OpExecute for SBC_A_N {
         let a = registers.a;
         let val = self._b2;
         let carry = registers.get_carry() as u8;
-        let difference = (Wrapping(a) - Wrapping(val) - Wrapping(carry)).0;
+        let difference = a.wrapping_sub(val).wrapping_sub(carry);
         let val_plus_c = val as u16 + carry as u16;
         registers.set_zero(difference == 0);
         registers.set_operation(true);
@@ -1518,7 +1517,7 @@ macro_rules! cp_r {
             fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
                 let a = registers.a;
                 let r = registers.$reg;
-                let difference = (Wrapping(a) - Wrapping(r)).0;
+                let difference = a.wrapping_sub(r);
                 registers.set_zero(difference == 0);
                 registers.set_operation(true);
                 registers.set_halfcarry((r & 0xF) <= (a & 0xF));
@@ -1545,7 +1544,7 @@ impl OpExecute for CP_xHL {
         let a = registers.a;
         let address = to_u16(registers.h, registers.l);
         let val = memory.read_byte(address);
-        let difference = (Wrapping(a) - Wrapping(val)).0;
+        let difference = a.wrapping_sub(val);
         registers.set_zero(difference == 0);
         registers.set_operation(true);
         registers.set_halfcarry((val & 0xF) <= (a & 0xF));
@@ -1560,7 +1559,7 @@ impl OpExecute for CP_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let a = registers.a;
         let val = self._b2;
-        let difference = (Wrapping(a) - Wrapping(val)).0;
+        let difference = a.wrapping_sub(val);
         registers.set_zero(difference == 0);
         registers.set_operation(true);
         registers.set_halfcarry((val & 0xF) <= (a & 0xF));
