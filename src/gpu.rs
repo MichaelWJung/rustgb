@@ -2,7 +2,6 @@ use display::Display;
 use memory::{Memory, BlockMemory};
 use std::cell::RefCell;
 use std::ops::Deref;
-use std::rc::Rc;
 
 pub struct Gpu<'a> {
     mode: Mode,

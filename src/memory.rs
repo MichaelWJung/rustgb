@@ -114,7 +114,7 @@ enum MemoryType {
 }
 
 pub struct BlockMemory {
-    memory: Vec::<u8>,
+    memory: Vec<u8>,
 }
 
 impl BlockMemory {
