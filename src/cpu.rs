@@ -636,10 +636,13 @@ impl Registers {
             e: 0,
             h: 0,
             l: 0,
-            pc: 0x0,
+            pc: 0x100,
             sp: 0xFFFE,
             cycles_of_last_command: 0,
         }
+    }
+
+    fn initialize(&mut self) {
     }
 
     generate_flag_getter_and_setter!(get_zero, set_zero, 0x80);

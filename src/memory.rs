@@ -40,7 +40,7 @@ impl<'a, 'b: 'a> MemoryMap<'a, 'b> {
         io: &'a RefCell<BlockMemory>
         ) -> MemoryMap<'a, 'b> {
         MemoryMap {
-            bios_active: true,
+            bios_active: false,
             bios,
             rom,
             external_ram: BlockMemory::new(0x4000),
