@@ -18,14 +18,16 @@ impl<'a, D> Gpu<'a, D>
     where D: Display + 'a
 {
     pub fn new(display: D, io: &'a RefCell<BlockMemory>) -> Gpu<'a, D> {
-        Gpu {
+        let mut gpu = Gpu {
             mode: Mode::ScanlineOam,
             mode_clock: 0,
             vram: BlockMemory::new(0x2000),
             sprites: BlockMemory::new(0x100),
             io,
             display,
-        }
+        };
+        gpu.set_mode(Mode::ScanlineOam);
+        gpu
     }
 
     pub fn get_vram(&self) -> &Memory {
@@ -53,8 +55,8 @@ impl<'a, D> Gpu<'a, D>
             Mode::ScanlineVram => 3,
         };
         let mut state = self.io.borrow().read_byte(0x41);
-        state &= 0b11111100;
-        state |= mode_bits;
+        //state &= 0b11111100;
+        //state |= mode_bits;
         self.io.borrow_mut().write_byte(0x41, state);
     }
 
