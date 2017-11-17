@@ -19,8 +19,8 @@ pub fn run(file: &mut File) {
 
     //let audio_device = audio::create_audio_device(&sdl_context);
 
-    let mut display_context = display::DisplayContext::new(&sdl_context);
-    let display = display::Display::new(&mut display_context);
+    let mut display_context = display::SdlDisplayContext::new(&sdl_context);
+    let display = display::SdlDisplay::new(&mut display_context);
 
     //let mut event_pump = sdl_context.event_pump().unwrap();
     //let keyboard = keyboard::Keyboard::new(&mut event_pump);

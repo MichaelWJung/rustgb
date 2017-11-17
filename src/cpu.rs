@@ -1,22 +1,28 @@
 // Allow non Camel case types for opcode classes
 #![allow(non_camel_case_types)]
 
+use display::Display;
 use gpu::Gpu;
 use memory::Memory;
 use std::cell::RefCell;
 
 pub const CLOCK_SPEED_IN_HERTZ: u64 = 4_194_304;
 
-pub struct Cpu<'a, 'b: 'a, M> {
+pub struct Cpu<'a, 'b, M, D>
+    where 'b: 'a,
+          D: Display + 'b
+{
     registers: Registers,
     memory: M,
-    gpu: &'a RefCell<Gpu<'b>>,
+    gpu: &'a RefCell<Gpu<'b, D>>,
     clock: u32,
 }
 
-impl<'a, 'b: 'a, M> Cpu<'a, 'b, M>
-    where M: Memory {
-    pub fn new(memory: M, gpu: &'a RefCell<Gpu<'b>>) -> Cpu<'a, 'b, M> {
+impl<'a, 'b: 'a, M, D> Cpu<'a, 'b, M, D>
+    where M: Memory,
+          D: Display
+{
+    pub fn new(memory: M, gpu: &'a RefCell<Gpu<'b, D>>) -> Cpu<'a, 'b, M, D> {
         Cpu {
             registers: Registers::new(),
             memory,
@@ -956,7 +962,7 @@ impl OpExecute for LDI_A_xHL {
     }
 }
 
-// Load A into (HL). Decrement HL.
+// Load A into (HL). Increment HL.
 create_opcode_struct!(LDI_xHL_A);
 impl OpExecute for LDI_xHL_A {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {

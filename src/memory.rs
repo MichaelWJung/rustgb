@@ -1,3 +1,4 @@
+use display::Display;
 use gpu::Gpu;
 
 use std::cell::RefCell;
@@ -21,7 +22,10 @@ pub trait Memory {
     }
 }
 
-pub struct MemoryMap<'a, 'b: 'a> {
+pub struct MemoryMap<'a, 'b, D>
+    where 'b: 'a,
+          D: Display + 'b
+{
     bios_active: bool,
     bios: &'a mut BlockMemory,
     rom: BlockMemory,
@@ -29,16 +33,18 @@ pub struct MemoryMap<'a, 'b: 'a> {
     working_ram: BlockMemory,
     zero_page: BlockMemory,
     io: &'a RefCell<BlockMemory>,
-    gpu: &'a RefCell<Gpu<'b>>,
+    gpu: &'a RefCell<Gpu<'b, D>>,
 }
 
-impl<'a, 'b: 'a> MemoryMap<'a, 'b> {
+impl<'a, 'b, D> MemoryMap<'a, 'b, D>
+    where D: Display
+{
     pub fn new(
         bios: &'a mut BlockMemory,
-        gpu: &'a RefCell<Gpu<'b>>,
+        gpu: &'a RefCell<Gpu<'b, D>>,
         rom: BlockMemory,
         io: &'a RefCell<BlockMemory>
-        ) -> MemoryMap<'a, 'b> {
+        ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
             bios_active: false,
             bios,
@@ -59,14 +65,15 @@ impl<'a, 'b: 'a> MemoryMap<'a, 'b> {
             0xA000 ... 0xBFFF => (MemoryType::ExternalRam, address & 0x1FFF),
             0xC000 ... 0xFDFF => (MemoryType::WorkingRam, address & 0x1FFF),
             0xFE00 ... 0xFEFF => (MemoryType::Sprites, address & 0xFF),
-            0xFF00 ... 0xFF7F => (MemoryType::Io, 0), // FIXME: Implement
+            0xFF00 ... 0xFF7F => (MemoryType::Io, address & 0x7F),
             0xFF80 ... 0xFFFF => (MemoryType::ZeroPage, address & 0x7F),
             _ => panic!("Memory address not known")
         }
     }
 }
 
-impl<'a, 'b: 'a> Memory for MemoryMap<'a, 'b> {
+impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
+    where D: Display {
     fn read_byte(&self, address: u16) -> u8 {
         let (memory_type, address) = self.address_to_type(address);
         let gpu = self.gpu.borrow();
