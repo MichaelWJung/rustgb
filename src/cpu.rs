@@ -1660,7 +1660,7 @@ macro_rules! dec_r {
                 let new_val = val.wrapping_sub(1);
                 registers.$reg = new_val;
                 let borrow = (new_val & 0xF) == 0xF;
-                registers.set_halfcarry(!borrow);
+                registers.set_halfcarry(borrow); // TODO: richtig??
                 registers.set_zero(new_val == 0);
                 registers.set_operation(true);
                 registers.pc += 1;
@@ -1687,7 +1687,7 @@ impl OpExecute for DEC_xHL {
         let new_val = val.wrapping_sub(1);
         memory.write_byte(address, new_val);
         let borrow = (new_val & 0xF) == 0xF;
-        registers.set_halfcarry(!borrow);
+        registers.set_halfcarry(borrow); // TODO: richtig??
         registers.set_zero(new_val == 0);
         registers.set_operation(true);
         registers.pc += 1;
@@ -1744,7 +1744,7 @@ impl OpExecute for ADD_SP_N {
         registers.set_operation(false);
         registers.set_halfcarry((sum & 0xFFF) < (sp & 0xFFF)); // ??? Stimmt das???
         registers.set_carry(sum < sp); // ??? Stimmt das???
-        registers.pc += 1;
+        registers.pc += 2;
         registers.cycles_of_last_command = 16;
     }
 }
@@ -1858,6 +1858,7 @@ impl OpExecute for SWAP_xHL {
     }
 }
 
+// TODO: Diesen Opcode nochmal prüfen
 // BCD correction for register A
 create_opcode_struct!(DAA);
 impl OpExecute for DAA {
@@ -1931,6 +1932,7 @@ create_opcode_struct!(HALT);
 impl OpExecute for HALT {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
+        panic!("HALT is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1941,6 +1943,7 @@ create_opcode_struct!(STOP);
 impl OpExecute for STOP {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
+        panic!("STOP is not yet implemented!");
         registers.pc += 2;
         registers.cycles_of_last_command = 4;
     }
@@ -1951,6 +1954,7 @@ create_opcode_struct!(DI);
 impl OpExecute for DI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
+        panic!("DI is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1961,6 +1965,7 @@ create_opcode_struct!(EI);
 impl OpExecute for EI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
+        panic!("EI is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -2217,7 +2222,7 @@ impl OpExecute for RR_xHL {
         let val = memory.read_byte(address);
         let carry_in = registers.get_carry() as u8;
         let carry_out = (val & 0x1) != 0;
-        let new_val = (val << 1) + carry_in;
+        let new_val = (val >> 1) + carry_in * 0x80;
         memory.write_byte(address, new_val);
         registers.set_zero(new_val == 0);
         registers.set_operation(false);
@@ -2455,8 +2460,8 @@ macro_rules! bit_b_hl {
         impl OpExecute for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
                 let address = to_u16(registers.h, registers.l);
-                let reg = memory.read_byte(address);
-                let bit = (0x1 << $bit) & reg != 0;
+                let val = memory.read_byte(address);
+                let bit = (0x1 << $bit) & val != 0;
                 registers.set_zero(!bit);
                 registers.set_operation(false);
                 registers.set_halfcarry(true);
@@ -2696,7 +2701,7 @@ create_opcode_struct!(JP_NZ_NN);
 impl OpExecute for JP_NZ_NN {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_zero() {
-        let address = to_u16(self._b3, self._b2);
+            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2710,7 +2715,7 @@ create_opcode_struct!(JP_Z_NN);
 impl OpExecute for JP_Z_NN {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_zero() {
-        let address = to_u16(self._b3, self._b2);
+            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2724,7 +2729,7 @@ create_opcode_struct!(JP_NC_NN);
 impl OpExecute for JP_NC_NN {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_carry() {
-        let address = to_u16(self._b3, self._b2);
+            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2738,7 +2743,7 @@ create_opcode_struct!(JP_C_NN);
 impl OpExecute for JP_C_NN {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_carry() {
-        let address = to_u16(self._b3, self._b2);
+            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2822,9 +2827,9 @@ impl OpExecute for JR_C_N {
 create_opcode_struct!(CALL_NN);
 impl OpExecute for CALL_NN {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
+        let address = to_u16(self._b3, self._b2);
         registers.sp -= 2;
         memory.write_word(registers.sp, registers.pc + 3);
-        let address = to_u16(self._b3, self._b2);
         registers.pc = address;
         registers.cycles_of_last_command = 12;
     }
@@ -2835,9 +2840,9 @@ create_opcode_struct!(CALL_NZ_NN);
 impl OpExecute for CALL_NZ_NN {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_zero() {
+            let address = to_u16(self._b3, self._b2);
             registers.sp -= 2;
             memory.write_word(registers.sp, registers.pc + 3);
-            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2851,9 +2856,9 @@ create_opcode_struct!(CALL_Z_NN);
 impl OpExecute for CALL_Z_NN {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_zero() {
+            let address = to_u16(self._b3, self._b2);
             registers.sp -= 2;
             memory.write_word(registers.sp, registers.pc + 3);
-            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2867,9 +2872,9 @@ create_opcode_struct!(CALL_NC_NN);
 impl OpExecute for CALL_NC_NN {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if !registers.get_carry() {
+            let address = to_u16(self._b3, self._b2);
             registers.sp -= 2;
             memory.write_word(registers.sp, registers.pc + 3);
-            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2883,9 +2888,9 @@ create_opcode_struct!(CALL_C_NN);
 impl OpExecute for CALL_C_NN {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         if registers.get_carry() {
+            let address = to_u16(self._b3, self._b2);
             registers.sp -= 2;
             memory.write_word(registers.sp, registers.pc + 3);
-            let address = to_u16(self._b3, self._b2);
             registers.pc = address;
         } else {
             registers.pc += 3;
@@ -2899,6 +2904,7 @@ macro_rules! rst_n {
         create_opcode_struct!($name);
         impl OpExecute for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
+                panic!("Opcode RST_N not verified, yet");
                 registers.sp -= 2;
                 memory.write_word(registers.sp, registers.pc + 1);
                 registers.pc = $address;
@@ -2994,6 +3000,7 @@ create_opcode_struct!(RETI);
 impl OpExecute for RETI {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         //TODO: Implement
+        panic!("RETI not implemnted yet");
         let address = memory.read_word(registers.sp);
         registers.sp += 2;
         registers.pc = address;

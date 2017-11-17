@@ -19,7 +19,7 @@ impl<'a, D> Gpu<'a, D>
 {
     pub fn new(display: D, io: &'a RefCell<BlockMemory>) -> Gpu<'a, D> {
         Gpu {
-            mode: Mode::HorizontalBlank,
+            mode: Mode::ScanlineOam,
             mode_clock: 0,
             vram: BlockMemory::new(0x2000),
             sprites: BlockMemory::new(0x100),
@@ -44,6 +44,20 @@ impl<'a, D> Gpu<'a, D>
         &mut self.sprites
     }
 
+    fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+        let mode_bits = match mode {
+            Mode::HorizontalBlank => 0,
+            Mode::VerticalBlank => 1,
+            Mode::ScanlineOam => 2,
+            Mode::ScanlineVram => 3,
+        };
+        let mut state = self.io.borrow().read_byte(0x41);
+        state &= 0b11111100;
+        state |= mode_bits;
+        self.io.borrow_mut().write_byte(0x41, state);
+    }
+
     pub fn step(&mut self, cycles: u8) {
         let cycles = cycles as u32;
         self.mode_clock += cycles;
@@ -51,13 +65,13 @@ impl<'a, D> Gpu<'a, D>
             Mode::ScanlineOam => {
                 if self.mode_clock >= SCANLINE_OAM_TIME {
                     self.mode_clock %= SCANLINE_OAM_TIME;
-                    self.mode = Mode::ScanlineVram;
+                    self.set_mode(Mode::ScanlineVram);
                 }
             }
             Mode::ScanlineVram => {
                 if self.mode_clock >= SCANLINE_VRAM_TIME {
                     self.mode_clock %= SCANLINE_VRAM_TIME;
-                    self.mode = Mode::HorizontalBlank;
+                    self.set_mode(Mode::HorizontalBlank);
                     self.render_scanline();
                 }
             }
@@ -66,17 +80,17 @@ impl<'a, D> Gpu<'a, D>
                     self.mode_clock %= HORIZONTAL_BLANK_TIME;
                     let new_line = self.increment_current_line();
                     if new_line >= DIM_Y {
-                        self.mode = Mode::VerticalBlank;
+                        self.set_mode(Mode::VerticalBlank);
                         self.render_screen();
                     } else {
-                        self.mode = Mode::ScanlineOam;
+                        self.set_mode(Mode::ScanlineOam);
                     }
                 }
             }
             Mode::VerticalBlank => {
                 if self.mode_clock >= VERTICAL_BLANK_TIME {
                     self.mode_clock %= VERTICAL_BLANK_TIME;
-                    self.mode = Mode::ScanlineOam;
+                    self.set_mode(Mode::ScanlineOam);
                     self.reset_current_line();
                 }
             }
@@ -209,6 +223,7 @@ const OFFSET_LCD_CONTROL_REGISTER: u16 = 0x0040;
 const OFFSET_PALETTE: u16 = 0x0047;
 pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
 
+#[derive(Copy, Clone)]
 enum Mode {
     HorizontalBlank = 0,
     VerticalBlank = 1,
