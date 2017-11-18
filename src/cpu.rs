@@ -2766,6 +2766,7 @@ impl OpExecute for JP_xHL {
 create_opcode_struct!(JR_N);
 impl OpExecute for JR_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
+        registers.pc += 1;
         registers.pc = ((registers.pc as i32) + self._b2 as i8 as i32) as u16;
         registers.cycles_of_last_command = 8;
     }
@@ -2776,6 +2777,7 @@ create_opcode_struct!(JR_NZ_N);
 impl OpExecute for JR_NZ_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_zero() {
+            registers.pc += 1;
             registers.pc = ((registers.pc as i32) + self._b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2789,6 +2791,7 @@ create_opcode_struct!(JR_Z_N);
 impl OpExecute for JR_Z_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_zero() {
+            registers.pc += 1;
             registers.pc = ((registers.pc as i32) + self._b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2802,6 +2805,7 @@ create_opcode_struct!(JR_NC_N);
 impl OpExecute for JR_NC_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if !registers.get_carry() {
+            registers.pc += 1;
             registers.pc = ((registers.pc as i32) + self._b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;
@@ -2815,6 +2819,7 @@ create_opcode_struct!(JR_C_N);
 impl OpExecute for JR_C_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         if registers.get_carry() {
+            registers.pc += 1;
             registers.pc = ((registers.pc as i32) + self._b2 as i8 as i32) as u16;
         } else {
             registers.pc += 2;

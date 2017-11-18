@@ -55,8 +55,8 @@ impl<'a, D> Gpu<'a, D>
             Mode::ScanlineVram => 3,
         };
         let mut state = self.io.borrow().read_byte(0x41);
-        //state &= 0b11111100;
-        //state |= mode_bits;
+        state &= 0b11111100;
+        state |= mode_bits;
         self.io.borrow_mut().write_byte(0x41, state);
     }
 
