@@ -36,6 +36,9 @@ impl<'a, 'b: 'a, M, D> Cpu<'a, 'b, M, D>
     }
 
     pub fn cycle(&mut self) {
+        if self.memory.in_bios() && self.registers.pc == 0x100 {
+            self.memory.leave_bios();
+        }
         let opcode = self.fetch_opcode();
         self.execute_opcode(opcode);
         self.clock += self.registers.cycles_of_last_command as u32;
@@ -642,7 +645,7 @@ impl Registers {
             e: 0,
             h: 0,
             l: 0,
-            pc: 0x100,
+            pc: 0x0,
             sp: 0xFFFE,
             cycles_of_last_command: 0,
         }

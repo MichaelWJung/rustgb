@@ -20,6 +20,11 @@ pub trait Memory {
         self.write_byte(address, low_byte);
         self.write_byte(address + 1, high_byte);
     }
+    // FIXME: fix this
+    fn in_bios(&self) -> bool {
+        false
+    }
+    fn leave_bios(&mut self) {}
 }
 
 pub struct MemoryMap<'a, 'b, D>
@@ -46,7 +51,7 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
         io: &'a RefCell<BlockMemory>
         ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
-            bios_active: false,
+            bios_active: true,
             bios,
             rom,
             external_ram: BlockMemory::new(0x4000),
@@ -106,6 +111,14 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
             MemoryType::Io => io.deref_mut(),
         };
         memory.write_byte(address, value)
+    }
+
+    fn in_bios(&self) -> bool {
+        self.bios_active
+    }
+
+    fn leave_bios(&mut self) {
+        self.bios_active = false;
     }
 }
 
