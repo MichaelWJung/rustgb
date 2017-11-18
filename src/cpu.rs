@@ -1935,7 +1935,7 @@ create_opcode_struct!(HALT);
 impl OpExecute for HALT {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
-        panic!("HALT is not yet implemented!");
+        println!("HALT is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1946,7 +1946,7 @@ create_opcode_struct!(STOP);
 impl OpExecute for STOP {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
-        panic!("STOP is not yet implemented!");
+        println!("STOP is not yet implemented!");
         registers.pc += 2;
         registers.cycles_of_last_command = 4;
     }
@@ -1957,7 +1957,7 @@ create_opcode_struct!(DI);
 impl OpExecute for DI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
-        panic!("DI is not yet implemented!");
+        println!("DI is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -1968,7 +1968,7 @@ create_opcode_struct!(EI);
 impl OpExecute for EI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         //TODO: Implement
-        panic!("EI is not yet implemented!");
+        println!("EI is not yet implemented!");
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -2904,7 +2904,7 @@ macro_rules! rst_n {
         create_opcode_struct!($name);
         impl OpExecute for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
-                panic!("Opcode RST_N not verified, yet");
+                println!("Opcode RST_N not verified, yet");
                 registers.sp -= 2;
                 memory.write_word(registers.sp, registers.pc + 1);
                 registers.pc = $address;
@@ -3000,7 +3000,7 @@ create_opcode_struct!(RETI);
 impl OpExecute for RETI {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
         //TODO: Implement
-        panic!("RETI not implemnted yet");
+        println!("RETI not implemnted yet");
         let address = memory.read_word(registers.sp);
         registers.sp += 2;
         registers.pc = address;
