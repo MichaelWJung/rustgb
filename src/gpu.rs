@@ -116,7 +116,7 @@ impl<'a, D> Gpu<'a, D>
         } else {
             OFFSET_TILE_MAP_0
         };
-        map_offset += ((self.get_current_line() as u16 + self.scy()) & 0xFF) >> 3;
+        map_offset += (((self.get_current_line() as u16 + self.scy()) & 0xFF) >> 3) << 5;
         let mut line_offset = self.scx() >> 3;
         let y = (self.get_current_line() as u16 + self.scy()) & 0x7;
         let mut x = self.scx() & 0x7;
