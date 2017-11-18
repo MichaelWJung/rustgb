@@ -64,10 +64,7 @@ impl<'a> Display for SdlDisplay<'a> {
             .with_lock(None, |buffer: &mut [u8], _: usize| {
                 for (i, &p) in pixels.iter().enumerate() {
                     let offset = i * 3;
-                    if p > 3 {
-                        println!("{}", p);
-                    }
-                    let val = p as u8 * (255 / 3);
+                    let val = (3 - p as u8) * (255 / 3);
                     buffer[offset] = val;
                     buffer[offset + 1] = val;
                     buffer[offset + 2] = val;
