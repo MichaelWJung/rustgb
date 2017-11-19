@@ -146,13 +146,11 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn scx(&self) -> u16 {
-        //self.io.borrow().read_byte(0x43) as u16
-        0
+        self.io.borrow().read_byte(0x43) as u16
     }
 
     fn scy(&self) -> u16 {
-        //self.io.borrow().read_byte(0x42) as u16
-        0
+        self.io.borrow().read_byte(0x42) as u16
     }
 
     fn increment_current_line(&mut self) -> u8 {
