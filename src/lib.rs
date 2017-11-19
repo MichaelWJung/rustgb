@@ -3,7 +3,10 @@ extern crate sdl2;
 mod cpu;
 mod display;
 mod gpu;
+mod keyboard;
 mod memory;
+
+use memory::Memory;
 
 use std::cell::RefCell;
 use std::fs::File;
@@ -22,8 +25,8 @@ pub fn run(file: &mut File) {
     let mut display_context = display::SdlDisplayContext::new(&sdl_context);
     let display = display::SdlDisplay::new(&mut display_context);
 
-    //let mut event_pump = sdl_context.event_pump().unwrap();
-    //let keyboard = keyboard::Keyboard::new(&mut event_pump);
+    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut keyboard = keyboard::Keyboard::new(&mut event_pump);
 
     //let mut memory = memory::BlockMemory::new();
     //memory.load_rom(file);
@@ -44,8 +47,14 @@ pub fn run(file: &mut File) {
     loop {
         let cycles_of_last_command = cpu.cycle();
         gpu.borrow_mut().step(cycles_of_last_command);
+
+        let mut key_register = io.borrow().read_byte(0x0);
+        keyboard.update_key_register(&mut key_register);
+        io.borrow_mut().write_byte(0x0, key_register);
+
         let clock = cpu.get_clock();
         if clock > next_frame {
+            keyboard.check_events();
             next_frame += gpu::CLOCK_TICKS_PER_FRAME;
             let duration = frame_start.elapsed();
             if frame_length > duration {
