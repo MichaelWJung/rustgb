@@ -36,12 +36,14 @@ pub fn run(file: &mut File) {
     let io = RefCell::new(memory::BlockMemory::new(0x80));
     let gpu = RefCell::new(gpu::Gpu::new(display, &io));
     let memory_map = memory::MemoryMap::new(&mut bios, &gpu, rom, &io);
-    let mut cpu = cpu::Cpu::new(memory_map, &gpu);
+    let mut cpu = cpu::Cpu::new(memory_map);
+
     let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME;
     let mut frame_start = time::Instant::now();
     let frame_length = time::Duration::new(0, FRAME_LENGTH_IN_NS);
     loop {
-        cpu.cycle();
+        let cycles_of_last_command = cpu.cycle();
+        gpu.borrow_mut().step(cycles_of_last_command);
         let clock = cpu.get_clock();
         if clock > next_frame {
             next_frame += gpu::CLOCK_TICKS_PER_FRAME;

@@ -1,32 +1,25 @@
 // Allow non Camel case types for opcode classes
 #![allow(non_camel_case_types)]
 
-use display::Display;
-use gpu::Gpu;
 use memory::Memory;
 use std::cell::RefCell;
 
 pub const CLOCK_SPEED_IN_HERTZ: u64 = 4_194_304;
 
-pub struct Cpu<'a, 'b, M, D>
-    where 'b: 'a,
-          D: Display + 'b
+pub struct Cpu<M>
 {
     registers: Registers,
     memory: M,
-    gpu: &'a RefCell<Gpu<'b, D>>,
     clock: u32,
 }
 
-impl<'a, 'b: 'a, M, D> Cpu<'a, 'b, M, D>
-    where M: Memory,
-          D: Display
+impl<M> Cpu<M>
+    where M: Memory
 {
-    pub fn new(memory: M, gpu: &'a RefCell<Gpu<'b, D>>) -> Cpu<'a, 'b, M, D> {
+    pub fn new(memory: M) -> Cpu<M> {
         Cpu {
             registers: Registers::new(),
             memory,
-            gpu,
             clock: 0,
         }
     }
@@ -35,14 +28,14 @@ impl<'a, 'b: 'a, M, D> Cpu<'a, 'b, M, D>
         self.clock
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> u8 {
         if self.memory.in_bios() && self.registers.pc == 0x100 {
             self.memory.leave_bios();
         }
         let opcode = self.fetch_opcode();
         self.execute_opcode(opcode);
         self.clock += self.registers.cycles_of_last_command as u32;
-        self.gpu.borrow_mut().step(self.registers.cycles_of_last_command);
+        self.registers.cycles_of_last_command
     }
 
     fn fetch_opcode(&self) -> Opcode {
