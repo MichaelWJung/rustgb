@@ -99,15 +99,10 @@ impl<'a, D> Gpu<'a, D>
         }
     }
 
-    fn get_color(vram: &BlockMemory, io: &BlockMemory, tile: u16, x: u16, y: u16) -> u8 {
-        let bit = 1 << (7 - x);
-        let mut offset = tile * 0x10;
-        offset += y as u16 * 0x2;
-        let low_bit = (vram.read_byte(offset) & bit) != 0;
-        let high_bit = (vram.read_byte(offset + 1) & bit) != 0;
-        let color = low_bit as u8 + high_bit as u8 * 2;
-        let palette = io.read_byte(OFFSET_PALETTE);
-        palette >> (color * 2) & 3
+    fn get_color(vram: &BlockMemory, io: &BlockMemory, tile: Tile, x: u16, y: u16) -> u8 {
+        let line = tile.get_line(y as u8, vram);
+        let color = line[x as usize];
+        apply_palette(color, Palette::BackgroundPalette, io)
     }
 
     fn render_scanline(&mut self) {
@@ -120,10 +115,9 @@ impl<'a, D> Gpu<'a, D>
         let mut line_offset = self.scx() >> 3;
         let y = (self.get_current_line() as u16 + self.scy()) & 0x7;
         let mut x = self.scx() & 0x7;
-        let mut tile = self.vram.read_byte(map_offset + line_offset) as u16;
-        if !Self::bg_tile_set(&self.io.borrow()) && tile < 128 {
-            tile += 256;
-        }
+        let tile_num = self.vram.read_byte(map_offset + line_offset);
+        let tile_set = Self::bg_tile_set(&self.io.borrow());
+        let mut tile = Tile::new(tile_num, tile_set);
 
         let current_line = self.get_current_line();
         let display_line = self.display.get_line_mut(current_line);
@@ -133,10 +127,9 @@ impl<'a, D> Gpu<'a, D>
             x = (x + 1) % 8;
             if x == 0 {
                 line_offset = (line_offset + 1) & 0x1F;
-                tile = self.vram.read_byte(map_offset + line_offset) as u16;
-                if !Self::bg_tile_set(&self.io.borrow()) && tile < 128 {
-                    tile += 256;
-                }
+                let tile_num = self.vram.read_byte(map_offset + line_offset);
+                let tile_set = Self::bg_tile_set(&self.io.borrow());
+                tile = Tile::new(tile_num, tile_set);
             }
         }
     }
@@ -191,8 +184,12 @@ impl<'a, D> Gpu<'a, D>
         Self::get_gpu_control_register_static(io) & (1 << 3) != 0
     }
 
-    fn bg_tile_set(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register_static(io) & (1 << 4) != 0
+    fn bg_tile_set(io: &BlockMemory) -> TileSet {
+        if Self::get_gpu_control_register_static(io) & (1 << 4) != 0 {
+            TileSet::Set1
+        } else {
+            TileSet::Set0
+        }
     }
 
     fn window_on(&self) -> bool {
@@ -219,8 +216,11 @@ const OFFSET_TILE_SET_1: u16 = 0x0000;
 const OFFSET_TILE_SET_0: u16 = 0x1000;
 const OFFSET_TILE_MAP_0: u16 = 0x1800;
 const OFFSET_TILE_MAP_1: u16 = 0x1C00;
+const TILE_SIZE_IN_BYTES: u16 = 0x10;
 const OFFSET_LCD_CONTROL_REGISTER: u16 = 0x0040;
-const OFFSET_PALETTE: u16 = 0x0047;
+const OFFSET_BACKGROUND_PALETTE: u16 = 0x0047;
+const OFFSET_OBJECT0_PALETTE: u16 = 0x0048;
+const OFFSET_OBJECT1_PALETTE: u16 = 0x0048;
 pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
 
 #[derive(Copy, Clone)]
@@ -229,6 +229,72 @@ enum Mode {
     VerticalBlank = 1,
     ScanlineOam = 2,
     ScanlineVram = 3,
+}
+
+enum Palette {
+    BackgroundPalette,
+    ObjectPalette0,
+    ObjectPalette1,
+}
+
+fn apply_palette<M: Memory>(color: u8, palette: Palette, io: &M) -> u8 {
+    let address = match palette {
+        Palette::BackgroundPalette => OFFSET_BACKGROUND_PALETTE,
+        Palette::ObjectPalette0 => OFFSET_OBJECT0_PALETTE,
+        Palette::ObjectPalette1 => OFFSET_OBJECT1_PALETTE,
+    };
+    let palette = io.read_byte(address);
+    palette >> (color * 2) & 3
+}
+
+#[derive(Copy, Clone)]
+enum TileSet {
+    Set0,
+    Set1,
+}
+
+#[derive(Copy, Clone)]
+struct Tile {
+    tile_num: u8,
+    tile_set: TileSet,
+}
+
+impl Tile {
+    fn new(tile_num: u8, tile_set: TileSet) -> Tile {
+        Tile { tile_num, tile_set }
+    }
+
+    fn get_line<M: Memory>(&self, line_num: u8, vram: &M) -> [u8; 8] {
+        let address = self.get_line_address(line_num);
+        let low_bits = vram.read_byte(address);
+        let high_bits = vram.read_byte(address + 1);
+        let mut line = [0; 8];
+        for i in 0..8 {
+            if low_bits & (0x80 >> i) != 0 {
+                line[i] += 1;
+            }
+            if high_bits & (0x80 >> i) != 0 {
+                line[i] += 2;
+            }
+        }
+        line
+    }
+
+    fn get_line_address(&self, line_num: u8) -> u16 {
+        let base_offset;
+        let tile_offset;
+        match self.tile_set {
+            TileSet::Set0 => {
+                base_offset = OFFSET_TILE_SET_0;
+                tile_offset = self.tile_num as i8 as i32 * TILE_SIZE_IN_BYTES as i32;
+            }
+            TileSet::Set1 => {
+                base_offset = OFFSET_TILE_SET_1;
+                tile_offset = self.tile_num as i32 * TILE_SIZE_IN_BYTES as i32;
+            }
+        };
+        (base_offset as i32 + tile_offset) as u16 + line_num as u16 * 0x2
+    }
 }
 
 #[cfg(test)]
@@ -267,7 +333,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_PALETTE, 0b11100100);
+                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
                 io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10000000);
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
@@ -319,7 +385,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_PALETTE, 0b11100100);
+                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
                 io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10001000);
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
@@ -359,7 +425,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_PALETTE, 0b11100100);
+                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
                 io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10010000);
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_1 + 0x00, 0b10101010);
