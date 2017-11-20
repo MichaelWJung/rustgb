@@ -13,6 +13,14 @@ pub trait Memory {
         let high_byte = self.read_byte(address + 1);
         ((high_byte as u16) << 8) + low_byte as u16
     }
+    fn read_4_bytes(&self, address: u16) -> [u8; 4] {
+        [
+            self.read_byte(address),
+            self.read_byte(address + 1),
+            self.read_byte(address + 2),
+            self.read_byte(address + 3)
+        ]
+    }
     fn write_byte(&mut self, address: u16, value: u8);
     fn write_word(&mut self, address: u16, value: u16) {
         let low_byte = (value & 0xFF) as u8;

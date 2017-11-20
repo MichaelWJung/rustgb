@@ -220,6 +220,7 @@ const OFFSET_BACKGROUND_PALETTE: u16 = 0x0047;
 const OFFSET_OBJECT0_PALETTE: u16 = 0x0048;
 const OFFSET_OBJECT1_PALETTE: u16 = 0x0048;
 pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
+const NUM_SPRITES: u16 = 40;
 
 #[derive(Copy, Clone)]
 enum Mode {
@@ -334,6 +335,52 @@ impl<'a, M> TileIterator<'a, M>
         if self.x == 0 {
             *self = self.tile_map.get_tile_iter(self.bg_x, self.y, self.vram);
         }
+    }
+}
+
+struct SpriteAttribute {
+    x_position: u8,
+    y_position: u8,
+    tile_num: u8,
+    priority: bool,
+    x_flip: bool,
+    y_flip: bool,
+    palette: Palette,
+}
+
+impl SpriteAttribute {
+    fn new(memory: &[u8]) -> SpriteAttribute {
+        let x_position = memory[1];
+        let y_position = memory[0];
+        let tile_num = memory[2];
+        let flags = memory[3];
+        let priority = (flags & 0x80 == 0);
+        let x_flip = (flags & 0x20 != 0);
+        let y_flip = (flags & 0x40 != 0);
+        let palette = if flags & 0x10 != 0 {
+            Palette::ObjectPalette1
+        } else {
+            Palette::ObjectPalette0
+        };
+        SpriteAttribute {
+            x_position,
+            y_position,
+            tile_num,
+            priority,
+            x_flip,
+            y_flip,
+            palette,
+        }
+    }
+
+    fn attributes_from_oam(oam: &BlockMemory) -> Vec<SpriteAttribute> {
+        let mut attributes = Vec::new();
+        attributes.reserve_exact(NUM_SPRITES as usize);
+        for i in 0..NUM_SPRITES {
+            let from = i * 0x4;
+            attributes.push(Self::new(&oam.read_4_bytes(from)));
+        }
+        attributes
     }
 }
 
