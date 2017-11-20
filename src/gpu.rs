@@ -106,31 +106,25 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_scanline(&mut self) {
-        let mut map_offset = if Self::bg_tile_map(&self.io.borrow()) {
-            OFFSET_TILE_MAP_1
-        } else {
-            OFFSET_TILE_MAP_0
-        };
-        map_offset += (((self.get_current_line() as u16 + self.scy()) & 0xFF) >> 3) << 5;
-        let mut line_offset = self.scx() >> 3;
-        let y = (self.get_current_line() as u16 + self.scy()) & 0x7;
-        let mut x = self.scx() & 0x7;
-        let tile_num = self.vram.read_byte(map_offset + line_offset);
+        let tile_map = Self::bg_tile_map(&self.io.borrow());
         let tile_set = Self::bg_tile_set(&self.io.borrow());
-        let mut tile = Tile::new(tile_num, tile_set);
+        let display_line_number = self.get_current_line();
+        let x = self.scx();
+        let y = display_line_number as u16 + self.scy();
+        let mut tile_iter = tile_map.get_tile_iter(x as u8, y as u8, &self.vram);
 
-        let current_line = self.get_current_line();
-        let display_line = self.display.get_line_mut(current_line);
+        let display_line_memory = self.display.get_line_mut(display_line_number);
         for i in 0..DIM_X {
-            let color = Self::get_color(&self.vram, &self.io.borrow(), tile, x, y);
-            display_line[i] = color;
-            x = (x + 1) % 8;
-            if x == 0 {
-                line_offset = (line_offset + 1) & 0x1F;
-                let tile_num = self.vram.read_byte(map_offset + line_offset);
-                let tile_set = Self::bg_tile_set(&self.io.borrow());
-                tile = Tile::new(tile_num, tile_set);
-            }
+            let tile = Tile::new(tile_iter.tile_number, tile_set);
+            let color = Self::get_color(
+                &self.vram,
+                &self.io.borrow(),
+                tile,
+                tile_iter.x as u16 % 8,
+                tile_iter.y as u16 % 8
+            );
+            display_line_memory[i] = color;
+            tile_iter.next();
         }
     }
 
@@ -180,8 +174,12 @@ impl<'a, D> Gpu<'a, D>
         self.get_gpu_control_register() & (1 << 2) != 0
     }
 
-    fn bg_tile_map(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register_static(io) & (1 << 3) != 0
+    fn bg_tile_map(io: &BlockMemory) -> TileMap {
+        if Self::get_gpu_control_register_static(io) & (1 << 3) != 0 {
+            TileMap::Map1
+        } else {
+            TileMap::Map0
+        }
     }
 
     fn bg_tile_set(io: &BlockMemory) -> TileSet {
@@ -294,6 +292,48 @@ impl Tile {
             }
         };
         (base_offset as i32 + tile_offset) as u16 + line_num as u16 * 0x2
+    }
+}
+
+enum TileMap {
+    Map0,
+    Map1,
+}
+
+impl TileMap {
+    fn get_tile_iter<'a, 'b: 'a, M: Memory>(&'a self, x: u8, y: u8, vram: &'b M) -> TileIterator<M> {
+        let base_offset = match self {
+            Map0 => OFFSET_TILE_MAP_0,
+            Map1 => OFFSET_TILE_MAP_1,
+        };
+        let row = y / 8;
+        let col = x / 8;
+        let tile_offset = row as u16 * 32 + col as u16;
+        let tile_number = vram.read_byte(base_offset + tile_offset);
+        TileIterator { bg_x: x, x: x % 8, y, tile_number, tile_map: self, vram }
+    }
+}
+
+struct TileIterator<'a, M>
+    where M: Memory + 'a
+{
+    bg_x: u8,
+    x: u8,
+    y: u8,
+    tile_number: u8,
+    tile_map: &'a TileMap,
+    vram: &'a M
+}
+
+impl<'a, M> TileIterator<'a, M>
+    where M: Memory
+{
+    fn next(&mut self) {
+        self.x = (self.x + 1) % 8;
+        self.bg_x = self.bg_x.wrapping_add(1);
+        if self.x == 0 {
+            *self = self.tile_map.get_tile_iter(self.bg_x, self.y, self.vram);
+        }
     }
 }
 
