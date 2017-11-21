@@ -1,4 +1,4 @@
-use display::Display;
+use display::{Display, COLS};
 use memory::{Memory, BlockMemory};
 use std::cell::RefCell;
 
@@ -8,7 +8,7 @@ pub struct Gpu<'a, D>
     mode: Mode,
     mode_clock: u32,
     vram: BlockMemory,
-    sprites: BlockMemory,
+    oam: BlockMemory,
     io: &'a RefCell<BlockMemory>,
     display: D,
 }
@@ -21,7 +21,7 @@ impl<'a, D> Gpu<'a, D>
             mode: Mode::ScanlineOam,
             mode_clock: 0,
             vram: BlockMemory::new(0x2000),
-            sprites: BlockMemory::new(0x100),
+            oam: BlockMemory::new(0x100),
             io,
             display,
         };
@@ -37,12 +37,12 @@ impl<'a, D> Gpu<'a, D>
         &mut self.vram
     }
 
-    pub fn get_sprites(&self) -> &Memory {
-        &self.sprites
+    pub fn get_oam(&self) -> &Memory {
+        &self.oam
     }
 
-    pub fn get_sprites_mut(&mut self) -> &mut Memory {
-        &mut self.sprites
+    pub fn get_oam_mut(&mut self) -> &mut Memory {
+        &mut self.oam
     }
 
     fn set_mode(&mut self, mode: Mode) {
@@ -98,32 +98,56 @@ impl<'a, D> Gpu<'a, D>
         }
     }
 
-    fn get_color(vram: &BlockMemory, io: &BlockMemory, tile: Tile, x: u16, y: u16) -> u8 {
-        let line = tile.get_line(y as u8, vram);
-        let color = line[x as usize];
-        apply_palette(color, Palette::BackgroundPalette, io)
+    fn render_scanline(&mut self) {
+        let display_line_number = self.get_current_line();
+        let mut display_line_memory = [0; COLS];
+        self.render_bg_line(display_line_number, &mut display_line_memory);
+        self.render_sprites(display_line_number, &mut display_line_memory);
+        self.display.set_line(display_line_number, &display_line_memory);
     }
 
-    fn render_scanline(&mut self) {
+    fn render_bg_line(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
+        if !Self::bg_on(&self.io.borrow()) { return; }
         let tile_map = Self::bg_tile_map(&self.io.borrow());
         let tile_set = Self::bg_tile_set(&self.io.borrow());
-        let display_line_number = self.get_current_line();
-        let x = self.scx();
-        let y = display_line_number as u16 + self.scy();
+        let x = Self::scx(&self.io.borrow());
+        let y = display_line_number as u16 + Self::scy(&self.io.borrow());
         let mut tile_iter = tile_map.get_tile_iter(x as u8, y as u8, &self.vram);
 
-        let display_line_memory = self.display.get_line_mut(display_line_number);
         for i in 0..DIM_X {
-            let tile = Tile::new(tile_iter.tile_number, tile_set);
-            let color = Self::get_color(
+            let tile = Tile::new(tile_iter.tile_number, tile_set, Palette::BackgroundPalette);
+            let color = tile.get_color(
+                tile_iter.x as u8 % 8,
+                tile_iter.y as u8 % 8,
                 &self.vram,
-                &self.io.borrow(),
-                tile,
-                tile_iter.x as u16 % 8,
-                tile_iter.y as u16 % 8
+                &self.io.borrow()
             );
             display_line_memory[i] = color;
             tile_iter.next();
+        }
+    }
+
+    fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
+        //if !Self::sprites_on(&self.io.borrow()) { return; }
+        let y = display_line_number as u16 + Self::scy(&self.io.borrow()) + 16;
+        let x = Self::scx(&self.io.borrow()) + 8;
+        let sprites = get_sprite_attributes_from_oam(&self.oam);
+        for sprite in sprites.iter().rev() {
+            let y_in_tile = y as i16 - sprite.y_position as i16;
+            if y_in_tile < 0 || y_in_tile >= 8 { continue; }
+            for i in 0..DIM_X {
+                let x = i as u16 + x;
+                let x_in_tile = x as i16 - sprite.x_position as i16;
+                if x_in_tile < 0 || x_in_tile >= 8 { continue; }
+                let tile = sprite.get_tile(&self.vram);
+                let color = tile.get_color(
+                    x_in_tile as u8,
+                    y_in_tile as u8,
+                    &self.vram,
+                    &self.io.borrow()
+                );
+                display_line_memory[i] = color;
+            }
         }
     }
 
@@ -131,12 +155,12 @@ impl<'a, D> Gpu<'a, D>
         self.display.redraw();
     }
 
-    fn scx(&self) -> u16 {
-        self.io.borrow().read_byte(0x43) as u16
+    fn scx(io: &BlockMemory) -> u16 {
+        io.read_byte(0x43) as u16
     }
 
-    fn scy(&self) -> u16 {
-        self.io.borrow().read_byte(0x42) as u16
+    fn scy(io: &BlockMemory) -> u16 {
+        io.read_byte(0x42) as u16
     }
 
     fn increment_current_line(&mut self) -> u8 {
@@ -225,6 +249,7 @@ enum Mode {
     ScanlineVram = 3,
 }
 
+#[derive(Copy, Clone)]
 enum Palette {
     BackgroundPalette,
     ObjectPalette0,
@@ -251,11 +276,28 @@ enum TileSet {
 struct Tile {
     tile_num: u8,
     tile_set: TileSet,
+    x_flip: bool,
+    y_flip: bool,
+    large_tile: bool,
+    palette: Palette,
 }
 
 impl Tile {
-    fn new(tile_num: u8, tile_set: TileSet) -> Tile {
-        Tile { tile_num, tile_set }
+    fn new(tile_num: u8, tile_set: TileSet, palette: Palette) -> Tile {
+        Tile {
+            tile_num,
+            tile_set,
+            x_flip: false,
+            y_flip: false,
+            large_tile: false,
+            palette,
+        }
+    }
+
+    fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M, io: &M) -> u8 {
+        let line = self.get_line(y, vram);
+        let color = line[x as usize];
+        apply_palette(color, self.palette, io)
     }
 
     fn get_line<M: Memory>(&self, line_num: u8, vram: &M) -> [u8; 8] {
@@ -368,15 +410,26 @@ impl SpriteAttribute {
         }
     }
 
-    fn attributes_from_oam(oam: &BlockMemory) -> Vec<SpriteAttribute> {
-        let mut attributes = Vec::new();
-        attributes.reserve_exact(NUM_SPRITES as usize);
-        for i in 0..NUM_SPRITES {
-            let from = i * 0x4;
-            attributes.push(Self::new(&oam.read_4_bytes(from)));
+    fn get_tile<M: Memory>(&self, vram: &M) -> Tile {
+        Tile {
+            tile_num: self.tile_num,
+            tile_set: TileSet::Set1,
+            x_flip: self.x_flip,
+            y_flip: self.y_flip,
+            large_tile: false,
+            palette: self.palette,
         }
-        attributes
     }
+}
+
+fn get_sprite_attributes_from_oam(oam: &BlockMemory) -> Vec<SpriteAttribute> {
+    let mut attributes = Vec::new();
+    attributes.reserve_exact(NUM_SPRITES as usize);
+    for i in 0..NUM_SPRITES {
+        let from = i * 0x4;
+        attributes.push(SpriteAttribute::new(&oam.read_4_bytes(from)));
+    }
+    attributes
 }
 
 #[cfg(test)]
@@ -400,9 +453,9 @@ mod tests {
             *self.pixels = [0; PIXELS];
         }
 
-        fn get_line_mut(&mut self, line: u8) -> &mut[u8] {
+        fn set_line(&mut self, line: u8, pixels: &[u8; COLS]) {
             let line = line as usize;
-            &mut self.pixels[(COLS * line)..(COLS * (line + 1))]
+            self.pixels[(COLS * line)..(COLS * (line + 1))].copy_from_slice(pixels);
         }
     }
 

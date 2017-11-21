@@ -11,7 +11,7 @@ const SCALE_FACTOR: u32 = 5;
 pub trait Display {
     fn redraw(&mut self);
     fn clear(&mut self);
-    fn get_line_mut(&mut self, line: u8) -> &mut[u8];
+    fn set_line(&mut self, line: u8, pixels: &[u8; COLS]);
 }
 
 pub struct SdlDisplayContext {
@@ -80,8 +80,8 @@ impl<'a> Display for SdlDisplay<'a> {
         self.pixels = [0; PIXELS];
     }
 
-    fn get_line_mut(&mut self, line: u8) -> &mut[u8] {
+    fn set_line(&mut self, line: u8, pixels: &[u8; COLS]) {
         let line = line as usize;
-        &mut self.pixels[(COLS * line)..(COLS * (line + 1))]
+        self.pixels[(COLS * line)..(COLS * (line + 1))].copy_from_slice(pixels);
     }
 }

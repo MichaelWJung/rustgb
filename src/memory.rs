@@ -97,7 +97,7 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
             MemoryType::Rom => &self.rom,
             MemoryType::ExternalRam => &self.external_ram,
             MemoryType::WorkingRam => &self.working_ram,
-            MemoryType::Sprites => gpu.get_vram(),
+            MemoryType::Sprites => gpu.get_oam(),
             MemoryType::ZeroPage => &self.zero_page,
             MemoryType::Io => io.deref(),
         };
@@ -114,7 +114,7 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
             MemoryType::Rom => &mut self.rom,
             MemoryType::ExternalRam => &mut self.external_ram,
             MemoryType::WorkingRam => &mut self.working_ram,
-            MemoryType::Sprites => gpu.get_sprites_mut(),
+            MemoryType::Sprites => gpu.get_oam_mut(),
             MemoryType::ZeroPage => &mut self.zero_page,
             MemoryType::Io => io.deref_mut(),
         };
