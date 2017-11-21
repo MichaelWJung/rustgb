@@ -1068,11 +1068,24 @@ macro_rules! pop_rr {
     )*}
 }
 pop_rr!(
-    a, f: POP_AF,
     b, c: POP_BC,
     d, e: POP_DE,
     h, l: POP_HL
 );
+
+// Pop two bytes off the stack with special handling for flags register. Increment SP twice.
+create_opcode_struct!(POP_AF);
+impl OpExecute for POP_AF {
+    fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
+        let value = memory.read_word(registers.sp);
+        registers.a = ((value & 0xFF00) >> 8) as u8;
+        // Low nibble should always be zeroes!
+        registers.f = (value & 0xF0) as u8;
+        registers.sp += 2;
+        registers.pc += 1;
+        registers.cycles_of_last_command = 12;
+    }
+}
 
 // Add register to A
 macro_rules! add_a_r {
