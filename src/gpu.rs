@@ -1,7 +1,6 @@
 use display::Display;
 use memory::{Memory, BlockMemory};
 use std::cell::RefCell;
-use std::ops::Deref;
 
 pub struct Gpu<'a, D>
     where D: Display + 'a
@@ -154,28 +153,24 @@ impl<'a, D> Gpu<'a, D>
         self.io.borrow_mut().write_byte(0x44, 0);
     }
 
-    fn get_gpu_control_register_static(io: &BlockMemory) -> u8 {
+    fn get_gpu_control_register(io: &BlockMemory) -> u8 {
         io.read_byte(OFFSET_LCD_CONTROL_REGISTER)
     }
 
-    fn get_gpu_control_register(&self) -> u8 {
-        Self::get_gpu_control_register_static(self.io.borrow().deref())
-    }
-
     fn bg_on(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register_static(io) & 1 != 0
+        Self::get_gpu_control_register(io) & 1 != 0
     }
 
-    fn sprites_on(&self) -> bool {
-        self.get_gpu_control_register() & (1 << 1) != 0
+    fn sprites_on(io: &BlockMemory) -> bool {
+        Self::get_gpu_control_register(io) & (1 << 1) != 0
     }
 
-    fn large_sprites(&self) -> bool {
-        self.get_gpu_control_register() & (1 << 2) != 0
+    fn _large_sprites(io: &BlockMemory) -> bool {
+        Self::get_gpu_control_register(io) & (1 << 2) != 0
     }
 
     fn bg_tile_map(io: &BlockMemory) -> TileMap {
-        if Self::get_gpu_control_register_static(io) & (1 << 3) != 0 {
+        if Self::get_gpu_control_register(io) & (1 << 3) != 0 {
             TileMap::Map1
         } else {
             TileMap::Map0
@@ -183,23 +178,23 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn bg_tile_set(io: &BlockMemory) -> TileSet {
-        if Self::get_gpu_control_register_static(io) & (1 << 4) != 0 {
+        if Self::get_gpu_control_register(io) & (1 << 4) != 0 {
             TileSet::Set1
         } else {
             TileSet::Set0
         }
     }
 
-    fn window_on(&self) -> bool {
-        self.get_gpu_control_register() & (1 << 5) != 0
+    fn _window_on(io: &BlockMemory) -> bool {
+        Self::get_gpu_control_register(io) & (1 << 5) != 0
     }
 
-    fn window_tile_map(&self) -> u8 {
-        (self.get_gpu_control_register() & (1 << 6) != 0) as u8
+    fn _window_tile_map(io: &BlockMemory) -> u8 {
+        (Self::get_gpu_control_register(io) & (1 << 6) != 0) as u8
     }
 
-    fn display_on(&self) -> bool {
-        self.get_gpu_control_register() & (1 << 7) != 0
+    fn _display_on(io: &BlockMemory) -> bool {
+        Self::get_gpu_control_register(io) & (1 << 7) != 0
     }
 }
 
@@ -354,9 +349,9 @@ impl SpriteAttribute {
         let y_position = memory[0];
         let tile_num = memory[2];
         let flags = memory[3];
-        let priority = (flags & 0x80 == 0);
-        let x_flip = (flags & 0x20 != 0);
-        let y_flip = (flags & 0x40 != 0);
+        let priority = flags & 0x80 == 0;
+        let x_flip = flags & 0x20 != 0;
+        let y_flip = flags & 0x40 != 0;
         let palette = if flags & 0x10 != 0 {
             Palette::ObjectPalette1
         } else {

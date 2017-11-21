@@ -2,7 +2,6 @@
 #![allow(non_camel_case_types)]
 
 use memory::Memory;
-use std::cell::RefCell;
 
 pub const CLOCK_SPEED_IN_HERTZ: u64 = 4_194_304;
 
