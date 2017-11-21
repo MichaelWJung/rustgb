@@ -303,9 +303,9 @@ enum TileMap {
 
 impl TileMap {
     fn get_tile_iter<'a, 'b: 'a, M: Memory>(&'a self, x: u8, y: u8, vram: &'b M) -> TileIterator<M> {
-        let base_offset = match self {
-            Map0 => OFFSET_TILE_MAP_0,
-            Map1 => OFFSET_TILE_MAP_1,
+        let base_offset = match *self {
+            TileMap::Map0 => OFFSET_TILE_MAP_0,
+            TileMap::Map1 => OFFSET_TILE_MAP_1,
         };
         let row = y / 8;
         let col = x / 8;
