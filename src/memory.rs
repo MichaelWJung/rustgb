@@ -143,17 +143,18 @@ enum MemoryType {
 
 pub struct BlockMemory {
     memory: Vec<u8>,
+    read_only: bool,
 }
 
 impl BlockMemory {
     pub fn new(size: usize) -> BlockMemory {
-        BlockMemory { memory: vec![0; size] }
+        BlockMemory { memory: vec![0; size], read_only: false }
     }
 
     pub fn new_from_file(file: &mut File) -> BlockMemory {
         let mut memory = Vec::<u8>::new();
         file.read_to_end(&mut memory).unwrap();
-        BlockMemory { memory }
+        BlockMemory { memory, read_only: true }
     }
 }
 
@@ -163,6 +164,8 @@ impl Memory for BlockMemory {
     }
 
     fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[address as usize] = value;
+        if !self.read_only {
+            self.memory[address as usize] = value;
+        }
     }
 }
