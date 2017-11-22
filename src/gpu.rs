@@ -113,8 +113,7 @@ impl<'a, D> Gpu<'a, D>
             Mode::HorizontalBlank => {
                 if self.mode_clock >= HORIZONTAL_BLANK_TIME {
                     self.mode_clock %= HORIZONTAL_BLANK_TIME;
-                    let new_line = self.increment_current_line();
-                    if new_line >= DIM_Y {
+                    if self.get_current_line() == DIM_Y - 1 {
                         self.set_mode(Mode::VerticalBlank);
                         self.render_screen();
                         let interrupts_fired = self.io.borrow().read_byte(0x0F);
@@ -122,11 +121,12 @@ impl<'a, D> Gpu<'a, D>
                     } else {
                         self.set_mode(Mode::ScanlineOam);
                     }
+                    self.increment_current_line();
                 }
             }
             Mode::VerticalBlank => {
                 if self.mode_clock >= VERTICAL_BLANK_TIME / 10 {
-                    self.mode_clock %= (VERTICAL_BLANK_TIME / 10);
+                    self.mode_clock %= VERTICAL_BLANK_TIME / 10;
                     self.increment_current_line();
                     if self.get_current_line() > 153 {
                         self.set_mode(Mode::ScanlineOam);
@@ -138,6 +138,7 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_scanline(&mut self) {
+        if !Self::display_on(&self.io.borrow()) { return; }
         let display_line_number = self.get_current_line();
         let mut display_line_memory = [0; COLS];
         self.render_bg_line(display_line_number, &mut display_line_memory);
@@ -260,7 +261,7 @@ impl<'a, D> Gpu<'a, D>
         (Self::get_gpu_control_register(io) & (1 << 6) != 0) as u8
     }
 
-    fn _display_on(io: &BlockMemory) -> bool {
+    fn display_on(io: &BlockMemory) -> bool {
         Self::get_gpu_control_register(io) & (1 << 7) != 0
     }
 
