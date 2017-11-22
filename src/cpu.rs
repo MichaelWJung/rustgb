@@ -2017,7 +2017,7 @@ impl OpExecute for RLCA {
         let carry = (val & 0x80) >> 7;
         let new_val = (val << 1) + carry;
         registers.a = new_val;
-        registers.set_zero(new_val == 0);
+        registers.set_zero(false);
         registers.set_operation(false);
         registers.set_halfcarry(false);
         registers.set_carry(carry != 0);
@@ -2035,7 +2035,7 @@ impl OpExecute for RLA {
         let carry_out = (val & 0x80) != 0;
         let new_val = (val << 1) + carry_in;
         registers.a = new_val;
-        registers.set_zero(new_val == 0);
+        registers.set_zero(false);
         registers.set_operation(false);
         registers.set_halfcarry(false);
         registers.set_carry(carry_out);
@@ -2052,7 +2052,7 @@ impl OpExecute for RRCA {
         let carry = val & 0x1;
         let new_val = (val >> 1) + carry * 0x80;
         registers.a = new_val;
-        registers.set_zero(new_val == 0);
+        registers.set_zero(false);
         registers.set_operation(false);
         registers.set_halfcarry(false);
         registers.set_carry(carry != 0);
@@ -2070,7 +2070,7 @@ impl OpExecute for RRA {
         let carry_out = (val & 0x1) != 0;
         let new_val = (val >> 1) + carry_in * 0x80;
         registers.a = new_val;
-        registers.set_zero(new_val == 0);
+        registers.set_zero(false);
         registers.set_operation(false);
         registers.set_halfcarry(false);
         registers.set_carry(carry_out);
