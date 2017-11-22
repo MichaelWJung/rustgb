@@ -676,6 +676,14 @@ fn increment_register_pair(h: &mut u8, l: &mut u8) {
     store_value_in_register_pair(value, h, l);
 }
 
+fn test_carry_u16(a: u16, b: u16) -> (bool, bool) {
+    let carry_mask = 0xFF;
+    let halfcarry_mask = 0xF;
+    let carry = (a & carry_mask) + (b & carry_mask) > carry_mask;
+    let halfcarry = (a & halfcarry_mask) + (b & halfcarry_mask) > halfcarry_mask;
+    (carry, halfcarry)
+}
+
 macro_rules! create_opcode_struct {
     ($name:ident) => {
         struct $name {
@@ -1012,8 +1020,14 @@ impl OpExecute for LD_SP_HL {
 create_opcode_struct!(LDHL_SP_N);
 impl OpExecute for LDHL_SP_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
-        let address = registers.sp + self._b2 as u16;
+        let offset = self._b2 as i8 as u16;
+        let address = registers.sp.wrapping_add(offset);
         store_value_in_register_pair(address, &mut registers.h, &mut registers.l);
+        registers.set_zero(false);
+        registers.set_operation(false);
+        let (carry, halfcarry) = test_carry_u16(registers.sp, offset);
+        registers.set_carry(carry);
+        registers.set_halfcarry(halfcarry);
         registers.pc += 2;
         registers.cycles_of_last_command = 12;
     }
@@ -1746,12 +1760,14 @@ create_opcode_struct!(ADD_SP_N);
 impl OpExecute for ADD_SP_N {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
         let sp = registers.sp;
-        let sum = sp.wrapping_add(self._b2 as u16);
+        let val = self._b2 as i8 as u16;
+        let sum = sp.wrapping_add(val);
         registers.sp = sum;
         registers.set_zero(false);
         registers.set_operation(false);
-        registers.set_halfcarry((sum & 0xFFF) < (sp & 0xFFF)); // ??? Stimmt das???
-        registers.set_carry(sum < sp); // ??? Stimmt das???
+        let (carry, halfcarry) = test_carry_u16(sp, val);
+        registers.set_carry(carry);
+        registers.set_halfcarry(halfcarry);
         registers.pc += 2;
         registers.cycles_of_last_command = 16;
     }
