@@ -167,7 +167,7 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
-        //if !Self::sprites_on(&self.io.borrow()) { return; }
+        if !Self::sprites_on(&self.io.borrow()) { return; }
         let y = display_line_number as u16 + Self::scy(&self.io.borrow()) + 16;
         let x = Self::scx(&self.io.borrow()) + 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
@@ -205,8 +205,8 @@ impl<'a, D> Gpu<'a, D>
     fn increment_current_line(&mut self) -> u8 {
         let current_line = self.io.borrow_mut().read_byte(0x44) + 1;
         self.io.borrow_mut().write_byte(0x44, current_line);
-        let coincidence = Self::get_lyc(&self.io.borrow()) == current_line;
-        self.set_coincidence_flag(coincidence);
+        //let coincidence = Self::get_lyc(&self.io.borrow()) == current_line;
+        //self.set_coincidence_flag(coincidence);
         current_line
     }
 
@@ -216,8 +216,8 @@ impl<'a, D> Gpu<'a, D>
 
     fn reset_current_line(&mut self) {
         self.io.borrow_mut().write_byte(0x44, 0);
-        let coincidence = Self::get_lyc(&self.io.borrow()) == 0;
-        self.set_coincidence_flag(coincidence);
+        //let coincidence = Self::get_lyc(&self.io.borrow()) == 0;
+        //self.set_coincidence_flag(coincidence);
     }
 
     fn get_gpu_control_register(io: &BlockMemory) -> u8 {
