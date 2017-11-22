@@ -31,8 +31,12 @@ impl<M> Cpu<M>
         if self.memory.in_bios() && self.registers.pc == 0x100 {
             self.memory.leave_bios();
         }
-        let opcode = self.fetch_opcode();
-        self.execute_opcode(opcode);
+        if self.registers.halt {
+            self.registers.cycles_of_last_command = 4;
+        } else {
+            let opcode = self.fetch_opcode();
+            self.execute_opcode(opcode);
+        }
         self.clock += self.registers.cycles_of_last_command as u32;
         let mut cycles = self.registers.cycles_of_last_command;
         cycles += self.handle_interrupts();
@@ -74,6 +78,7 @@ impl<M> Cpu<M>
     }
 
     fn start_interrupt_handler(&mut self, interrupt: Interrupt) -> u8 {
+        self.registers.halt = false;
         self.registers.interrupt_master_enable = false;
         let interrupts_fired = self.memory.read_byte(0xFF0F);
         self.memory.write_byte(0xFF0F, interrupts_fired & !interrupt.to_bitmask());
@@ -673,6 +678,8 @@ struct Registers {
 
     cycles_of_last_command: u8,
     interrupt_master_enable: bool,
+
+    halt: bool,
 }
 
 macro_rules! generate_flag_getter_and_setter {
@@ -706,6 +713,7 @@ impl Registers {
             sp: 0xFFFE,
             cycles_of_last_command: 0,
             interrupt_master_enable: false,
+            halt: false,
         }
     }
 
@@ -2035,8 +2043,9 @@ impl OpExecute for NOP {
 create_opcode_struct!(HALT);
 impl OpExecute for HALT {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
-        //TODO: Implement
-        println!("HALT is not yet implemented!");
+        if registers.interrupt_master_enable {
+            registers.halt = true;
+        }
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
