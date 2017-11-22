@@ -117,18 +117,21 @@ impl<'a, D> Gpu<'a, D>
                     if new_line >= DIM_Y {
                         self.set_mode(Mode::VerticalBlank);
                         self.render_screen();
+                        let interrupts_fired = self.io.borrow().read_byte(0x0F);
+                        self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0001);
                     } else {
                         self.set_mode(Mode::ScanlineOam);
                     }
                 }
             }
             Mode::VerticalBlank => {
-                if self.mode_clock >= VERTICAL_BLANK_TIME {
-                    self.mode_clock %= VERTICAL_BLANK_TIME;
-                    self.set_mode(Mode::ScanlineOam);
-                    self.reset_current_line();
-                    let interrupts_fired = self.io.borrow().read_byte(0x0F);
-                    self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0001);
+                if self.mode_clock >= VERTICAL_BLANK_TIME / 10 {
+                    self.mode_clock %= (VERTICAL_BLANK_TIME / 10);
+                    self.increment_current_line();
+                    if self.get_current_line() > 153 {
+                        self.set_mode(Mode::ScanlineOam);
+                        self.reset_current_line();
+                    }
                 }
             }
         }
