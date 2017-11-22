@@ -54,22 +54,27 @@ impl<'a> Keyboard<'a> {
         }
     }
 
-    pub fn check_events(&mut self) {
+    pub fn check_events(&mut self) -> bool {
+        let mut pressed = false;
         while let Some(event) = self.event_pump.poll_event() {
             match event {
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => ::std::process::exit(0),
-                Event::KeyDown { keycode: Some(key), .. } => self.key_down(key),
+                Event::KeyDown { keycode: Some(key), .. } => pressed |= self.key_down(key),
                 Event::KeyUp { keycode: Some(key), .. } => self.key_up(key),
                 _ => {}
             }
         }
+        pressed
     }
 
-    fn key_down(&mut self, keycode: Keycode) {
+    fn key_down(&mut self, keycode: Keycode) -> bool {
         let index = key_to_index(keycode);
         if let Some(key) = index {
             self.key_statuses[key] = true;
+            true
+        } else {
+            false
         }
     }
 

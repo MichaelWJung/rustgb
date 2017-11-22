@@ -57,6 +57,40 @@ impl<'a, D> Gpu<'a, D>
         state &= 0b11111100;
         state |= mode_bits;
         self.io.borrow_mut().write_byte(0x41, state);
+
+        match mode {
+            Mode::HorizontalBlank => {
+                if InterruptMode::HorizontalBlank.is_set(&self.io.borrow()) {
+                    self.fire_lcdc_interrupt();
+                }
+            }
+            Mode::VerticalBlank => {
+                if InterruptMode::VerticalBlank.is_set(&self.io.borrow()) {
+                    self.fire_lcdc_interrupt();
+                }
+            }
+            Mode::ScanlineOam => {
+                if InterruptMode::ScanlineOam.is_set(&self.io.borrow()) {
+                    self.fire_lcdc_interrupt();
+                }
+            }
+            _ => (),
+        }
+    }
+
+    fn set_coincidence_flag(&mut self, value: bool) {
+        let mut state = self.io.borrow().read_byte(0x41);
+        state &= 0b1111_1011;
+        state |= (value as u8) << 2;
+        self.io.borrow_mut().write_byte(0x41, state);
+        if InterruptMode::LycLyConcidence.is_set(&self.io.borrow()) {
+            self.fire_lcdc_interrupt();
+        }
+    }
+
+    fn fire_lcdc_interrupt(&mut self) {
+        let interrupts_fired = self.io.borrow().read_byte(0x0F);
+        self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0010);
     }
 
     pub fn step(&mut self, cycles: u8) {
@@ -93,6 +127,8 @@ impl<'a, D> Gpu<'a, D>
                     self.mode_clock %= VERTICAL_BLANK_TIME;
                     self.set_mode(Mode::ScanlineOam);
                     self.reset_current_line();
+                    let interrupts_fired = self.io.borrow().read_byte(0x0F);
+                    self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0001);
                 }
             }
         }
@@ -166,6 +202,8 @@ impl<'a, D> Gpu<'a, D>
     fn increment_current_line(&mut self) -> u8 {
         let current_line = self.io.borrow_mut().read_byte(0x44) + 1;
         self.io.borrow_mut().write_byte(0x44, current_line);
+        let coincidence = Self::get_lyc(&self.io.borrow()) == current_line;
+        self.set_coincidence_flag(coincidence);
         current_line
     }
 
@@ -175,6 +213,8 @@ impl<'a, D> Gpu<'a, D>
 
     fn reset_current_line(&mut self) {
         self.io.borrow_mut().write_byte(0x44, 0);
+        let coincidence = Self::get_lyc(&self.io.borrow()) == 0;
+        self.set_coincidence_flag(coincidence);
     }
 
     fn get_gpu_control_register(io: &BlockMemory) -> u8 {
@@ -220,6 +260,10 @@ impl<'a, D> Gpu<'a, D>
     fn _display_on(io: &BlockMemory) -> bool {
         Self::get_gpu_control_register(io) & (1 << 7) != 0
     }
+
+    fn get_lyc(io: &BlockMemory) -> u8 {
+        io.read_byte(0x45)
+    }
 }
 
 const SCANLINE_OAM_TIME: u32 = 80;
@@ -247,6 +291,25 @@ enum Mode {
     VerticalBlank = 1,
     ScanlineOam = 2,
     ScanlineVram = 3,
+}
+
+enum InterruptMode {
+    LycLyConcidence,
+    ScanlineOam,
+    VerticalBlank,
+    HorizontalBlank,
+}
+
+impl InterruptMode {
+    fn is_set(&self, io: &BlockMemory) -> bool {
+        let stat = io.read_byte(0x41);
+        match *self {
+            InterruptMode::LycLyConcidence => stat & 0b0100_0000 != 0,
+            InterruptMode::ScanlineOam => stat & 0b0010_0000 != 0,
+            InterruptMode::VerticalBlank => stat & 0b0001_0000 != 0,
+            InterruptMode::HorizontalBlank => stat & 0b0000_1000 != 0,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]

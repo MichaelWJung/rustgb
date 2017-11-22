@@ -54,7 +54,11 @@ pub fn run(file: &mut File) {
 
         let clock = cpu.get_clock();
         if clock > next_frame {
-            keyboard.check_events();
+            let pressed = keyboard.check_events();
+            if pressed {
+                let interrupts_fired = io.borrow().read_byte(0x0F);
+                io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0001_0000);
+            }
             next_frame += gpu::CLOCK_TICKS_PER_FRAME;
             let duration = frame_start.elapsed();
             if frame_length > duration {

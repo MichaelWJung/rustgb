@@ -34,7 +34,9 @@ impl<M> Cpu<M>
         let opcode = self.fetch_opcode();
         self.execute_opcode(opcode);
         self.clock += self.registers.cycles_of_last_command as u32;
-        self.registers.cycles_of_last_command
+        let mut cycles = self.registers.cycles_of_last_command;
+        cycles += self.handle_interrupts();
+        cycles
     }
 
     fn fetch_opcode(&self) -> Opcode {
@@ -49,6 +51,67 @@ impl<M> Cpu<M>
     fn execute_opcode(&mut self, opcode: Opcode) {
         let opcode_function = OPCODE_MAP[opcode.b1 as usize];
         opcode_function(opcode, &mut self.registers, &mut self.memory);
+    }
+
+    fn handle_interrupts(&mut self) -> u8 {
+        if !self.registers.interrupt_master_enable { return 0; }
+        let enabled_interrupts = self.memory.read_byte(0xFFFF);
+        let interrupts_fired = self.memory.read_byte(0xFF0F) & enabled_interrupts;
+        if interrupts_fired & Interrupt::Keypad.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Keypad)
+        } else if interrupts_fired & Interrupt::Serial.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Serial)
+        } else if interrupts_fired & Interrupt::Timer.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Timer)
+        } else if interrupts_fired & Interrupt::LcdStatus.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::LcdStatus)
+        } else if interrupts_fired & Interrupt::VerticalBlank.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::VerticalBlank)
+        } else {
+            0
+        }
+    }
+
+    fn start_interrupt_handler(&mut self, interrupt: Interrupt) -> u8 {
+        self.registers.interrupt_master_enable = false;
+        let interrupts_fired = self.memory.read_byte(0xFF0F);
+        self.memory.write_byte(0xFF0F, interrupts_fired & !interrupt.to_bitmask());
+        self.registers.sp -= 2;
+        let sp = self.registers.sp;
+        let pc = self.registers.pc;
+        self.memory.write_word(sp, pc);
+        self.registers.pc = interrupt.handler_address();
+        12
+    }
+}
+
+enum Interrupt {
+    VerticalBlank,
+    LcdStatus,
+    Timer,
+    Serial,
+    Keypad,
+}
+
+impl Interrupt {
+    fn to_bitmask(&self) -> u8 {
+        match *self {
+            Interrupt::VerticalBlank => 0b0000_0001,
+            Interrupt::LcdStatus => 0b0000_0010,
+            Interrupt::Timer => 0b0000_0100,
+            Interrupt::Serial => 0b0000_1000,
+            Interrupt::Keypad => 0b0001_0000,
+        }
+    }
+
+    fn handler_address(&self) -> u16 {
+        match *self {
+            Interrupt::VerticalBlank => 0x40,
+            Interrupt::LcdStatus => 0x48,
+            Interrupt::Timer => 0x50,
+            Interrupt::Serial => 0x58,
+            Interrupt::Keypad => 0x60,
+        }
     }
 }
 
@@ -608,6 +671,7 @@ struct Registers {
     sp: u16,
 
     cycles_of_last_command: u8,
+    interrupt_master_enable: bool,
 }
 
 macro_rules! generate_flag_getter_and_setter {
@@ -640,6 +704,7 @@ impl Registers {
             pc: 0x0,
             sp: 0xFFFE,
             cycles_of_last_command: 0,
+            interrupt_master_enable: false,
         }
     }
 
@@ -1991,8 +2056,7 @@ impl OpExecute for STOP {
 create_opcode_struct!(DI);
 impl OpExecute for DI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
-        //TODO: Implement
-        println!("DI is not yet implemented!");
+        registers.interrupt_master_enable = false;
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -2002,8 +2066,7 @@ impl OpExecute for DI {
 create_opcode_struct!(EI);
 impl OpExecute for EI {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
-        //TODO: Implement
-        println!("EI is not yet implemented!");
+        registers.interrupt_master_enable = true;
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
@@ -3033,8 +3096,7 @@ impl OpExecute for RET_C {
 create_opcode_struct!(RETI);
 impl OpExecute for RETI {
     fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
-        //TODO: Implement
-        println!("RETI not implemnted yet");
+        registers.interrupt_master_enable = true;
         let address = memory.read_word(registers.sp);
         registers.sp += 2;
         registers.pc = address;
