@@ -644,7 +644,7 @@ impl Registers {
     }
 
     generate_flag_getter_and_setter!(get_zero, set_zero, 0x80);
-    generate_flag_getter_and_setter!(_get_operation, set_operation, 0x40);
+    generate_flag_getter_and_setter!(get_operation, set_operation, 0x40);
     generate_flag_getter_and_setter!(get_halfcarry, set_halfcarry, 0x20);
     generate_flag_getter_and_setter!(get_carry, set_carry, 0x10);
 }
@@ -1871,19 +1871,33 @@ impl OpExecute for SWAP_xHL {
 create_opcode_struct!(DAA);
 impl OpExecute for DAA {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
+        let old_halfcarry = registers.get_halfcarry();
+        let old_carry = registers.get_carry();
+        let operation = registers.get_operation();
         let mut val = registers.a;
-        if (val & 0xF) > 0x9 || registers.get_halfcarry() {
-            val += 0x6;
-        }
-        if (val & 0xF0) > 0x90 || registers.get_carry() {
-            val += 0x60;
-            registers.set_carry(true);
-        } else {
-            registers.set_carry(false);
+        let low_nibble = val & 0xF;
+        let mut carry = false;
+        if !operation {
+            if old_carry || val > 0x99 {
+                val = val.wrapping_add(0x60);
+                carry = true;
+            }
+            if old_halfcarry || low_nibble > 0x9 {
+                val = val.wrapping_add(0x6);
+            }
+        } else if old_carry {
+            carry = true;
+            val = val.wrapping_add(
+                if old_halfcarry { 0x9A }
+                else { 0xA0 }
+            );
+        } else if old_halfcarry {
+            val = val.wrapping_add(0xFA);
         }
         registers.a = val;
         registers.set_zero(val == 0);
         registers.set_halfcarry(false);
+        registers.set_carry(carry);
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
