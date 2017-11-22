@@ -2939,7 +2939,6 @@ macro_rules! rst_n {
         create_opcode_struct!($name);
         impl OpExecute for $name {
             fn execute(&self, registers: &mut Registers, memory: &mut Memory) {
-                println!("Opcode RST_N not verified, yet");
                 registers.sp -= 2;
                 memory.write_word(registers.sp, registers.pc + 1);
                 registers.pc = $address;
