@@ -1334,7 +1334,7 @@ macro_rules! sbc_a_r {
                 let r_plus_c = r as u16 + carry as u16;
                 registers.set_zero(difference == 0);
                 registers.set_operation(true);
-                registers.set_halfcarry((r_plus_c & 0xF) > ((a as u16) & 0xF));
+                registers.set_halfcarry((r & 0xF) + carry > (a & 0xF));
                 registers.set_carry((r_plus_c) > (a as u16));
                 registers.a = difference;
                 registers.pc += 1;
@@ -1364,7 +1364,7 @@ impl OpExecute for SBC_A_xHL {
         let val_plus_c = val as u16 + carry as u16;
         registers.set_zero(difference == 0);
         registers.set_operation(true);
-        registers.set_halfcarry((val_plus_c & 0xF) > ((a as u16) & 0xF));
+        registers.set_halfcarry((val & 0xF) + carry > (a & 0xF));
         registers.set_carry((val_plus_c) > (a as u16));
         registers.a = difference;
         registers.pc += 1;
@@ -1382,7 +1382,7 @@ impl OpExecute for SBC_A_N {
         let val_plus_c = val as u16 + carry as u16;
         registers.set_zero(difference == 0);
         registers.set_operation(true);
-        registers.set_halfcarry((val_plus_c & 0xF) > ((a as u16) & 0xF));
+        registers.set_halfcarry((val & 0xF) + carry > (a & 0xF));
         registers.set_carry((val_plus_c) > (a as u16));
         registers.a = difference;
         registers.pc += 2;
