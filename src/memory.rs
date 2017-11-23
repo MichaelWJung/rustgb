@@ -117,6 +117,11 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
             MemoryType::ZeroPage => self.zero_page.write_byte(address, value),
             MemoryType::Io => self.io.borrow_mut().write_byte(address, value),
         };
+        if address == 0xFFFF {
+            // TODO: Find better place for this
+            self.gpu.borrow_mut().vblank_interrupt_enabled = value & 1 != 0;
+            self.gpu.borrow_mut().state_interrupt_enabled = value & 2 != 0;
+        }
     }
 
     fn in_bios(&self) -> bool {

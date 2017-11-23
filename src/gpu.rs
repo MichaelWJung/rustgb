@@ -23,6 +23,16 @@ pub struct Gpu<'a, D>
     pub scy: u8,
     current_line: u8,
     pub lyc: u8,
+
+    pub vblank_interrupt_status: bool,
+    pub state_interrupt_status: bool,
+    pub vblank_interrupt_enabled: bool,
+    pub state_interrupt_enabled: bool,
+
+    pub state_interrupt_vblank: bool,
+    pub state_interrupt_hblank: bool,
+    pub state_interrupt_oam: bool,
+    pub state_interrupt_lycly_coincidence: bool,
 }
 
 impl<'a, D> Gpu<'a, D>
@@ -48,6 +58,14 @@ impl<'a, D> Gpu<'a, D>
             scy: 0,
             current_line: 0,
             lyc: 0,
+            vblank_interrupt_status: false,
+            state_interrupt_status: false,
+            vblank_interrupt_enabled: false,
+            state_interrupt_enabled: false,
+            state_interrupt_vblank: false,
+            state_interrupt_hblank: false,
+            state_interrupt_oam: false,
+            state_interrupt_lycly_coincidence: false,
         };
         gpu.set_mode(Mode::ScanlineOam);
         gpu
@@ -90,17 +108,17 @@ impl<'a, D> Gpu<'a, D>
         self.mode = mode;
         match mode {
             Mode::HorizontalBlank => {
-                if InterruptMode::HorizontalBlank.is_set(&self.io.borrow()) {
+                if self.state_interrupt_hblank {
                     self.fire_lcdc_interrupt();
                 }
             }
             Mode::VerticalBlank => {
-                if InterruptMode::VerticalBlank.is_set(&self.io.borrow()) {
+                if self.state_interrupt_vblank {
                     self.fire_lcdc_interrupt();
                 }
             }
             Mode::ScanlineOam => {
-                if InterruptMode::ScanlineOam.is_set(&self.io.borrow()) {
+                if self.state_interrupt_oam {
                     self.fire_lcdc_interrupt();
                 }
             }
@@ -109,8 +127,7 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn fire_lcdc_interrupt(&mut self) {
-        let interrupts_fired = self.io.borrow().read_byte(0x0F);
-        self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0010);
+        self.state_interrupt_status = true;
     }
 
     pub fn step(&mut self, cycles: u8) {
@@ -136,8 +153,7 @@ impl<'a, D> Gpu<'a, D>
                     if self.get_current_line() == DIM_Y - 1 {
                         self.set_mode(Mode::VerticalBlank);
                         self.render_screen();
-                        let interrupts_fired = self.io.borrow().read_byte(0x0F);
-                        self.io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0000_0001);
+                        self.vblank_interrupt_status = true;
                     } else {
                         self.set_mode(Mode::ScanlineOam);
                     }
@@ -198,7 +214,7 @@ impl<'a, D> Gpu<'a, D>
                 let x = i as u16 + x;
                 let x_in_tile = x as i16 - sprite.x_position as i16;
                 if x_in_tile < 0 || x_in_tile >= 8 { continue; }
-                let tile = sprite.get_tile(&self.vram);
+                let tile = sprite.get_tile();
                 let color = tile.get_color(
                     x_in_tile as u8,
                     y_in_tile as u8,
@@ -268,25 +284,6 @@ enum Mode {
     VerticalBlank = 1,
     ScanlineOam = 2,
     ScanlineVram = 3,
-}
-
-enum InterruptMode {
-    LycLyConcidence,
-    ScanlineOam,
-    VerticalBlank,
-    HorizontalBlank,
-}
-
-impl InterruptMode {
-    fn is_set(&self, io: &BlockMemory) -> bool {
-        let stat = io.read_byte(0x41);
-        match *self {
-            InterruptMode::LycLyConcidence => stat & 0b0100_0000 != 0,
-            InterruptMode::ScanlineOam => stat & 0b0010_0000 != 0,
-            InterruptMode::VerticalBlank => stat & 0b0001_0000 != 0,
-            InterruptMode::HorizontalBlank => stat & 0b0000_1000 != 0,
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -474,7 +471,7 @@ impl SpriteAttribute {
         }
     }
 
-    fn get_tile<M: Memory>(&self, vram: &M) -> Tile {
+    fn get_tile(&self) -> Tile {
         Tile {
             tile_num: self.tile_num,
             tile_set: TileSet::Set1,
