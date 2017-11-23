@@ -6,6 +6,7 @@ mod gpu;
 mod io_registers;
 mod keyboard;
 mod memory;
+mod timer;
 
 use memory::Memory;
 
@@ -37,8 +38,9 @@ pub fn run(file: &mut File) {
 
     let rom = memory::BlockMemory::new_from_file(file);
     let mut bios = memory::BlockMemory::new_from_file(&mut bios);
+    let mut timer = RefCell::new(timer::Timer::new());
     let gpu = RefCell::new(gpu::Gpu::new(display));
-    let io = RefCell::new(io_registers::IoRegisters::new(&gpu));
+    let io = RefCell::new(io_registers::IoRegisters::new(&gpu, &timer));
     let memory_map = memory::MemoryMap::new(&mut bios, &gpu, rom, &io);
     let mut cpu = cpu::Cpu::new(memory_map);
 
@@ -48,6 +50,7 @@ pub fn run(file: &mut File) {
     loop {
         let cycles_of_last_command = cpu.cycle();
         gpu.borrow_mut().step(cycles_of_last_command);
+        timer.borrow_mut().increase(cycles_of_last_command);
 
         let mut key_register = io.borrow().read_byte(0x0);
         keyboard.update_key_register(&mut key_register);

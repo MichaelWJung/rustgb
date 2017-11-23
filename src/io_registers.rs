@@ -1,8 +1,13 @@
 use display::Display;
 use gpu::{Gpu, TileMap, TileSet};
 use memory::{BlockMemory, Memory};
+use timer::{Timer, TimerSpeed};
 use std::cell::RefCell;
 
+const OFFSET_DIVIDER_REGISTER: u16 = 0x04;
+const OFFSET_TIMER_COUNTER: u16 = 0x05;
+const OFFSET_TIMER_MODULO: u16 = 0x06;
+const OFFSET_TIMER_CONTROL: u16 = 0x07;
 const OFFSET_INTERRUPT_FLAGS: u16 = 0x0F;
 const OFFSET_LCD_CONTROL: u16 = 0x40;
 const OFFSET_LCDC_STATUS: u16 = 0x41;
@@ -19,15 +24,17 @@ pub struct IoRegisters<'a, D>
 {
     old_io: BlockMemory,
     gpu: &'a RefCell<Gpu<D>>,
+    timer: &'a RefCell<Timer>,
 }
 
 impl<'a, D> IoRegisters<'a, D>
     where D: Display
 {
-    pub fn new(gpu: &'a RefCell<Gpu<D>>) -> IoRegisters<'a, D> {
+    pub fn new(gpu: &'a RefCell<Gpu<D>>, timer: &'a RefCell<Timer>) -> IoRegisters<'a, D> {
         IoRegisters {
             old_io: BlockMemory::new(0x80),
             gpu,
+            timer,
         }
     }
 }
@@ -38,10 +45,20 @@ impl <'a, D> Memory for IoRegisters<'a, D>
     fn read_byte(&self, address: u16) -> u8 {
         let old_io = self.old_io.read_byte(address);
         match address {
+            OFFSET_DIVIDER_REGISTER => self.timer.borrow().get_divider(),
+            OFFSET_TIMER_COUNTER => self.timer.borrow().timer_counter,
+            OFFSET_TIMER_MODULO => self.timer.borrow().timer_modulo,
+            OFFSET_TIMER_CONTROL => {
+                let timer = self.timer.borrow();
+                let timer_speed = timer.timer_speed.to_u8();
+                let timer_enabled = (timer.timer_enabled as u8) << 2;
+                timer_speed | timer_enabled
+            }
             OFFSET_INTERRUPT_FLAGS => {
                 let gpu = self.gpu.borrow();
                 let vblank_interrupt = gpu.vblank_interrupt_status as u8;
                 let state_interrupt = (gpu.state_interrupt_status as u8) << 1;
+                let timer_interrupt = (self.timer.borrow().timer_interrupt as u8) << 2;
                 old_io & 0b1111_1100 | vblank_interrupt | state_interrupt
             }
             OFFSET_LCD_CONTROL => {
@@ -83,9 +100,21 @@ impl <'a, D> Memory for IoRegisters<'a, D>
 
     fn write_byte(&mut self, address: u16, value: u8) {
         match address {
+            OFFSET_DIVIDER_REGISTER => self.timer.borrow_mut().reset_divider(),
+            OFFSET_TIMER_COUNTER => self.timer.borrow_mut().timer_counter = value,
+            OFFSET_TIMER_MODULO => self.timer.borrow_mut().timer_modulo = value,
+            OFFSET_TIMER_CONTROL => {
+                let timer_speed = value & 0b0000_0011;
+                let timer_enabled = value & 0b0000_0100 != 0;
+                let mut timer = self.timer.borrow_mut();
+                timer.timer_speed = TimerSpeed::from_u8(timer_speed);
+                timer.timer_enabled = timer_enabled;
+
+            }
             OFFSET_INTERRUPT_FLAGS => {
                 self.gpu.borrow_mut().vblank_interrupt_status = value & 1 != 0;
                 self.gpu.borrow_mut().state_interrupt_status = value & 2 != 0;
+                self.timer.borrow_mut().timer_interrupt = value & 4 != 0;
             }
             OFFSET_LCDC_STATUS => {
                 let hblank_interrupt = value & 0b0000_1000 != 0;

@@ -63,14 +63,14 @@ impl<M> Cpu<M>
         let interrupts_fired = self.memory.read_byte(0xFF0F) & enabled_interrupts;
         if interrupts_fired & Interrupt::VerticalBlank.to_bitmask() != 0 {
             self.start_interrupt_handler(Interrupt::VerticalBlank)
-        //} else if interrupts_fired & Interrupt::LcdStatus.to_bitmask() != 0 {
-        //    self.start_interrupt_handler(Interrupt::LcdStatus)
-        //} else if interrupts_fired & Interrupt::Timer.to_bitmask() != 0 {
-        //    self.start_interrupt_handler(Interrupt::Timer)
-        //} else if interrupts_fired & Interrupt::Serial.to_bitmask() != 0 {
-        //    self.start_interrupt_handler(Interrupt::Serial)
-        //} else if interrupts_fired & Interrupt::Keypad.to_bitmask() != 0 {
-        //    self.start_interrupt_handler(Interrupt::Keypad)
+        } else if interrupts_fired & Interrupt::LcdStatus.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::LcdStatus)
+        } else if interrupts_fired & Interrupt::Timer.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Timer)
+        } else if interrupts_fired & Interrupt::Serial.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Serial)
+        } else if interrupts_fired & Interrupt::Keypad.to_bitmask() != 0 {
+            self.start_interrupt_handler(Interrupt::Keypad)
         } else {
             0
         }
