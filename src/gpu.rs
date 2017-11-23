@@ -2,14 +2,13 @@ use display::{Display, COLS};
 use memory::{Memory, BlockMemory};
 use std::cell::RefCell;
 
-pub struct Gpu<'a, D>
-    where D: Display + 'a
+pub struct Gpu<D>
+    where D: Display
 {
     mode: Mode,
     mode_clock: u32,
     vram: BlockMemory,
     oam: BlockMemory,
-    io: &'a RefCell<BlockMemory>,
     display: D,
     pub bg_on: bool,
     pub sprites_on: bool,
@@ -36,16 +35,15 @@ pub struct Gpu<'a, D>
     pub state_interrupt_lycly_coincidence: bool,
 }
 
-impl<'a, D> Gpu<'a, D>
-    where D: Display + 'a
+impl<D> Gpu<D>
+    where D: Display
 {
-    pub fn new(display: D, io: &'a RefCell<BlockMemory>) -> Gpu<'a, D> {
+    pub fn new(display: D) -> Gpu<D> {
         let mut gpu = Gpu {
             mode: Mode::ScanlineOam,
             mode_clock: 0,
             vram: BlockMemory::new(0x2000),
             oam: BlockMemory::new(0x100),
-            io,
             display,
             bg_on: false,
             sprites_on: false,
@@ -535,10 +533,8 @@ mod tests {
         let mut pixels = [0; PIXELS];
         {
             let display = MockDisplay::new(&mut pixels);
-            let io = RefCell::new(BlockMemory::new(0x80));
-            let mut gpu = Gpu::new(display, &io);
+            let mut gpu = Gpu::new(display);
             {
-                let mut io = io.borrow_mut();
                 gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set0;
@@ -590,10 +586,8 @@ mod tests {
         let mut pixels = [0; PIXELS];
         {
             let display = MockDisplay::new(&mut pixels);
-            let io = RefCell::new(BlockMemory::new(0x80));
-            let mut gpu = Gpu::new(display, &io);
+            let mut gpu = Gpu::new(display);
             {
-                let mut io = io.borrow_mut();
                 gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set0;
@@ -633,10 +627,8 @@ mod tests {
         let mut pixels = [0; PIXELS];
         {
             let display = MockDisplay::new(&mut pixels);
-            let io = RefCell::new(BlockMemory::new(0x80));
-            let mut gpu = Gpu::new(display, &io);
+            let mut gpu = Gpu::new(display);
             {
-                let mut io = io.borrow_mut();
                 gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set1;

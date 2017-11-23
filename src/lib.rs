@@ -38,7 +38,7 @@ pub fn run(file: &mut File) {
     let rom = memory::BlockMemory::new_from_file(file);
     let mut bios = memory::BlockMemory::new_from_file(&mut bios);
     let io_old = RefCell::new(memory::BlockMemory::new(0x80));
-    let gpu = RefCell::new(gpu::Gpu::new(display, &io_old));
+    let gpu = RefCell::new(gpu::Gpu::new(display));
     let io = RefCell::new(io_registers::IoRegisters::new(&io_old, &gpu));
     let memory_map = memory::MemoryMap::new(&mut bios, &gpu, rom, &io);
     let mut cpu = cpu::Cpu::new(memory_map);

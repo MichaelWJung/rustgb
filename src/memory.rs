@@ -46,8 +46,8 @@ pub struct MemoryMap<'a, 'b, D>
     external_ram: BlockMemory,
     working_ram: BlockMemory,
     zero_page: BlockMemory,
-    io: &'a RefCell<IoRegisters<'b, 'b, D>>,
-    gpu: &'a RefCell<Gpu<'b, D>>,
+    io: &'a RefCell<IoRegisters<'b, D>>,
+    gpu: &'a RefCell<Gpu<D>>,
 }
 
 impl<'a, 'b, D> MemoryMap<'a, 'b, D>
@@ -55,9 +55,9 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
 {
     pub fn new(
         bios: &'a mut BlockMemory,
-        gpu: &'a RefCell<Gpu<'b, D>>,
+        gpu: &'a RefCell<Gpu<D>>,
         rom: BlockMemory,
-        io: &'a RefCell<IoRegisters<'b, 'b, D>>
+        io: &'a RefCell<IoRegisters<'b, D>>
         ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
             bios_active: true,
