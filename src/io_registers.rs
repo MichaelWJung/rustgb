@@ -1,5 +1,5 @@
 use display::Display;
-use gpu::{Gpu, TileMap};
+use gpu::{Gpu, TileMap, TileSet};
 use memory::{BlockMemory, Memory};
 use std::cell::RefCell;
 
@@ -40,10 +40,12 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
                 let sprites_on = (gpu.sprites_on as u8) << 1;
                 let large_sprites = (gpu.large_sprites as u8) << 2;
                 let bg_tile_map = (gpu.bg_tile_map.to_bool() as u8) << 3;
-                old_io & 0b1111_1110 | bg_on
-                                     | sprites_on
-                                     | large_sprites
-                                     | bg_tile_map
+                let bg_tile_set = (gpu.bg_tile_set.to_bool() as u8) << 4;
+                let window_on = (gpu.window_on as u8) << 5;
+                let window_tile_map = (gpu.bg_tile_map.to_bool() as u8) << 6;
+                let display_on = (gpu.get_display_on() as u8) << 7;
+                bg_on | sprites_on | large_sprites | bg_tile_map | bg_tile_set
+                      | window_on | window_tile_map | display_on
             }
             OFFSET_LCDC_STATUS => {
                 (old_io & 0b1111_1100) | self.gpu.borrow().get_mode()
@@ -64,10 +66,20 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
                 let sprites_on = value & 0b0000_0010 != 0;
                 let large_sprites = value & 0b0000_0100 != 0;
                 let bg_tile_map = value & 0b0000_1000 != 0;
+                let bg_tile_set = value & 0b0001_0000 != 0;
+                let window_on = value & 0b0010_0000 != 0;
+                let window_tile_map = value & 0b0100_0000 != 0;
+                let display_on = value & 0b1000_0000 != 0;
                 gpu.bg_on = bg_on;
                 gpu.sprites_on = sprites_on;
                 gpu.large_sprites = large_sprites;
                 gpu.bg_tile_map = TileMap::from_bool(bg_tile_map);
+                gpu.bg_tile_set = TileSet::from_bool(bg_tile_set);
+                gpu.window_on = window_on;
+                gpu.window_tile_map = TileMap::from_bool(window_tile_map);
+                if gpu.get_display_on() != display_on {
+                    gpu.set_display_on(display_on);
+                }
             }
             OFFSET_SCY => self.gpu.borrow_mut().scy = value,
             OFFSET_SCX => self.gpu.borrow_mut().scx = value,

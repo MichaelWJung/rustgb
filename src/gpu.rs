@@ -15,6 +15,10 @@ pub struct Gpu<'a, D>
     pub sprites_on: bool,
     pub large_sprites: bool,
     pub bg_tile_map: TileMap,
+    pub bg_tile_set: TileSet,
+    pub window_on: bool,
+    pub window_tile_map: TileMap,
+    display_on: bool,
     pub scx: u8,
     pub scy: u8,
     current_line: u8,
@@ -35,6 +39,10 @@ impl<'a, D> Gpu<'a, D>
             sprites_on: false,
             large_sprites: false,
             bg_tile_map: TileMap::Map0,
+            bg_tile_set: TileSet::Set0,
+            window_on: false,
+            window_tile_map: TileMap::Map0,
+            display_on: false,
             scx: 0,
             scy: 0,
             current_line: 0,
@@ -66,6 +74,14 @@ impl<'a, D> Gpu<'a, D>
             Mode::ScanlineOam => 2,
             Mode::ScanlineVram => 3,
         }
+    }
+
+    pub fn set_display_on(&mut self, on: bool) {
+        self.display_on = on;
+    }
+
+    pub fn get_display_on(&self) -> bool {
+        self.display_on
     }
 
     fn set_mode(&mut self, mode: Mode) {
@@ -150,7 +166,7 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_scanline(&mut self) {
-        if !Self::display_on(&self.io.borrow()) { return; }
+        if !self.display_on { return; }
         let display_line_number = self.get_current_line();
         let mut display_line_memory = [0; COLS];
         self.render_bg_line(display_line_number, &mut display_line_memory);
@@ -160,7 +176,7 @@ impl<'a, D> Gpu<'a, D>
 
     fn render_bg_line(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
         if !self.bg_on { return; }
-        let tile_set = Self::bg_tile_set(&self.io.borrow());
+        let tile_set = self.bg_tile_set;
         let x = self.scx;
         let y = display_line_number as u16 + self.scy as u16;
         let mut tile_iter = self.bg_tile_map.get_tile_iter(x, y as u8, &self.vram);
@@ -225,26 +241,6 @@ impl<'a, D> Gpu<'a, D>
 
     fn get_gpu_control_register(io: &BlockMemory) -> u8 {
         io.read_byte(OFFSET_LCD_CONTROL_REGISTER)
-    }
-
-    fn bg_tile_set(io: &BlockMemory) -> TileSet {
-        if Self::get_gpu_control_register(io) & (1 << 4) != 0 {
-            TileSet::Set1
-        } else {
-            TileSet::Set0
-        }
-    }
-
-    fn _window_on(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register(io) & (1 << 5) != 0
-    }
-
-    fn _window_tile_map(io: &BlockMemory) -> u8 {
-        (Self::get_gpu_control_register(io) & (1 << 6) != 0) as u8
-    }
-
-    fn display_on(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register(io) & (1 << 7) != 0
     }
 
     fn get_lyc(io: &BlockMemory) -> u8 {
@@ -316,9 +312,22 @@ fn apply_palette<M: Memory>(color: u8, palette: Palette, io: &M) -> u8 {
 }
 
 #[derive(Copy, Clone)]
-enum TileSet {
+pub enum TileSet {
     Set0,
     Set1,
+}
+
+impl TileSet {
+    pub fn from_bool(b: bool) -> TileSet {
+        if b { TileSet::Set1 } else { TileSet::Set0 }
+    }
+
+    pub fn to_bool(&self) -> bool {
+        match *self {
+            TileSet::Set0 => false,
+            TileSet::Set1 => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -529,7 +538,8 @@ mod tests {
             {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
-                io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10000000);
+                gpu.set_display_on(true);
+                gpu.bg_tile_set = TileSet::Set0;
                 gpu.bg_tile_map = TileMap::Map0;
                 gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
@@ -583,7 +593,8 @@ mod tests {
             {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
-                io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10000000);
+                gpu.set_display_on(true);
+                gpu.bg_tile_set = TileSet::Set0;
                 gpu.bg_tile_map = TileMap::Map1;
                 gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
@@ -625,7 +636,8 @@ mod tests {
             {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
-                io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10010000);
+                gpu.set_display_on(true);
+                gpu.bg_tile_set = TileSet::Set1;
                 gpu.bg_tile_map = TileMap::Map0;
                 gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
