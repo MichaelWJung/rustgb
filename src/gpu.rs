@@ -530,6 +530,8 @@ mod tests {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
                 io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10000000);
+                gpu.bg_tile_map = TileMap::Map0;
+                gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x01, 0b10101010);
@@ -581,7 +583,9 @@ mod tests {
             {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
-                io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10001000);
+                io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10000000);
+                gpu.bg_tile_map = TileMap::Map1;
+                gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
                 vram.write_byte(OFFSET_TILE_SET_0 + 0x01, 0b10101010);
@@ -622,6 +626,8 @@ mod tests {
                 let mut io = io.borrow_mut();
                 io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
                 io.write_byte(OFFSET_LCD_CONTROL_REGISTER, 0b10010000);
+                gpu.bg_tile_map = TileMap::Map0;
+                gpu.bg_on = true;
                 let vram = gpu.get_vram_mut();
                 vram.write_byte(OFFSET_TILE_SET_1 + 0x00, 0b10101010);
                 vram.write_byte(OFFSET_TILE_SET_1 + 0x01, 0b10101010);
