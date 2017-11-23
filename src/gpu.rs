@@ -23,6 +23,7 @@ pub struct Gpu<'a, D>
     pub scy: u8,
     current_line: u8,
     pub lyc: u8,
+    pub palettes: Palettes,
 
     pub vblank_interrupt_status: bool,
     pub state_interrupt_status: bool,
@@ -58,6 +59,7 @@ impl<'a, D> Gpu<'a, D>
             scy: 0,
             current_line: 0,
             lyc: 0,
+            palettes: Palettes::new(),
             vblank_interrupt_status: false,
             state_interrupt_status: false,
             vblank_interrupt_enabled: false,
@@ -195,7 +197,7 @@ impl<'a, D> Gpu<'a, D>
                 tile_iter.x as u8 % 8,
                 tile_iter.y as u8 % 8,
                 &self.vram,
-                &self.io.borrow()
+                &self.palettes
             );
             display_line_memory[i] = color;
             tile_iter.next();
@@ -219,7 +221,7 @@ impl<'a, D> Gpu<'a, D>
                     x_in_tile as u8,
                     y_in_tile as u8,
                     &self.vram,
-                    &self.io.borrow()
+                    &self.palettes
                 );
                 display_line_memory[i] = color;
             }
@@ -272,9 +274,6 @@ const OFFSET_TILE_MAP_0: u16 = 0x1800;
 const OFFSET_TILE_MAP_1: u16 = 0x1C00;
 const TILE_SIZE_IN_BYTES: u16 = 0x10;
 const OFFSET_LCD_CONTROL_REGISTER: u16 = 0x0040;
-const OFFSET_BACKGROUND_PALETTE: u16 = 0x0047;
-const OFFSET_OBJECT0_PALETTE: u16 = 0x0048;
-const OFFSET_OBJECT1_PALETTE: u16 = 0x0048;
 pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
 const NUM_SPRITES: u16 = 40;
 
@@ -293,13 +292,24 @@ enum Palette {
     ObjectPalette1,
 }
 
-fn apply_palette<M: Memory>(color: u8, palette: Palette, io: &M) -> u8 {
-    let address = match palette {
-        Palette::BackgroundPalette => OFFSET_BACKGROUND_PALETTE,
-        Palette::ObjectPalette0 => OFFSET_OBJECT0_PALETTE,
-        Palette::ObjectPalette1 => OFFSET_OBJECT1_PALETTE,
+pub struct Palettes {
+    pub bg: u8,
+    pub obj0: u8,
+    pub obj1: u8,
+}
+
+impl Palettes {
+    fn new() -> Palettes {
+        Palettes { bg: 0, obj0: 0, obj1: 0 }
+    }
+}
+
+fn apply_palette(color: u8, palette: Palette, palettes: &Palettes) -> u8 {
+    let palette = match palette {
+        Palette::BackgroundPalette => palettes.bg,
+        Palette::ObjectPalette0 => palettes.obj0,
+        Palette::ObjectPalette1 => palettes.obj1,
     };
-    let palette = io.read_byte(address);
     palette >> (color * 2) & 3
 }
 
@@ -344,10 +354,10 @@ impl Tile {
         }
     }
 
-    fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M, io: &M) -> u8 {
+    fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M, palettes: &Palettes) -> u8 {
         let line = self.get_line(y, vram);
         let color = line[x as usize];
-        apply_palette(color, self.palette, io)
+        apply_palette(color, self.palette, palettes)
     }
 
     fn get_line<M: Memory>(&self, line_num: u8, vram: &M) -> [u8; 8] {
@@ -529,7 +539,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
+                gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set0;
                 gpu.bg_tile_map = TileMap::Map0;
@@ -584,7 +594,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
+                gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set0;
                 gpu.bg_tile_map = TileMap::Map1;
@@ -627,7 +637,7 @@ mod tests {
             let mut gpu = Gpu::new(display, &io);
             {
                 let mut io = io.borrow_mut();
-                io.write_byte(OFFSET_BACKGROUND_PALETTE, 0b11100100);
+                gpu.palettes.bg = 0b11100100;
                 gpu.set_display_on(true);
                 gpu.bg_tile_set = TileSet::Set1;
                 gpu.bg_tile_map = TileMap::Map0;

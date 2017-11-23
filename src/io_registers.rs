@@ -10,6 +10,9 @@ const OFFSET_SCY: u16 = 0x42;
 const OFFSET_SCX: u16 = 0x43;
 const OFFSET_LY: u16 = 0x44;
 const OFFSET_LYC: u16 = 0x45;
+const OFFSET_BACKGROUND_PALETTE: u16 = 0x47;
+const OFFSET_OBJECT0_PALETTE: u16 = 0x48;
+const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
 
 pub struct IoRegisters<'a, 'b, D>
     where 'b : 'a,
@@ -72,6 +75,9 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
             OFFSET_SCX => self.gpu.borrow().scx,
             OFFSET_LY => self.gpu.borrow().get_current_line(),
             OFFSET_LYC => self.gpu.borrow().lyc,
+            OFFSET_BACKGROUND_PALETTE => self.gpu.borrow().palettes.bg,
+            OFFSET_OBJECT0_PALETTE => self.gpu.borrow().palettes.obj0,
+            OFFSET_OBJECT1_PALETTE => self.gpu.borrow().palettes.obj1,
             _ => old_io,
         }
     }
@@ -118,6 +124,9 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
             OFFSET_SCX => self.gpu.borrow_mut().scx = value,
             OFFSET_LY => (),
             OFFSET_LYC => self.gpu.borrow_mut().lyc = value,
+            OFFSET_BACKGROUND_PALETTE => self.gpu.borrow_mut().palettes.bg = value,
+            OFFSET_OBJECT0_PALETTE => self.gpu.borrow_mut().palettes.obj0 = value,
+            OFFSET_OBJECT1_PALETTE => self.gpu.borrow_mut().palettes.obj1 = value,
             _ => self.old_io.borrow_mut().write_byte(address, value),
         }
     }
