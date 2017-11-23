@@ -22,6 +22,7 @@ pub struct Gpu<'a, D>
     pub scx: u8,
     pub scy: u8,
     current_line: u8,
+    pub lyc: u8,
 }
 
 impl<'a, D> Gpu<'a, D>
@@ -46,6 +47,7 @@ impl<'a, D> Gpu<'a, D>
             scx: 0,
             scy: 0,
             current_line: 0,
+            lyc: 0,
         };
         gpu.set_mode(Mode::ScanlineOam);
         gpu
@@ -103,16 +105,6 @@ impl<'a, D> Gpu<'a, D>
                 }
             }
             _ => (),
-        }
-    }
-
-    fn set_coincidence_flag(&mut self, value: bool) {
-        let mut state = self.io.borrow().read_byte(0x41);
-        state &= 0b1111_1011;
-        state |= (value as u8) << 2;
-        self.io.borrow_mut().write_byte(0x41, state);
-        if InterruptMode::LycLyConcidence.is_set(&self.io.borrow()) {
-            self.fire_lcdc_interrupt();
         }
     }
 
@@ -224,8 +216,7 @@ impl<'a, D> Gpu<'a, D>
 
     fn increment_current_line(&mut self) -> u8 {
         self.current_line += 1;
-        //let coincidence = Self::get_lyc(&self.io.borrow()) == current_line;
-        //self.set_coincidence_flag(coincidence);
+        self.check_fire_coincidence_interrupt();
         self.current_line
     }
 
@@ -235,16 +226,20 @@ impl<'a, D> Gpu<'a, D>
 
     fn reset_current_line(&mut self) {
         self.current_line = 0;
-        //let coincidence = Self::get_lyc(&self.io.borrow()) == 0;
-        //self.set_coincidence_flag(coincidence);
+        self.check_fire_coincidence_interrupt();
     }
 
-    fn get_gpu_control_register(io: &BlockMemory) -> u8 {
-        io.read_byte(OFFSET_LCD_CONTROL_REGISTER)
-    }
+    fn check_fire_coincidence_interrupt(&mut self) {
+        if self.lyc == self.current_line {
 
-    fn get_lyc(io: &BlockMemory) -> u8 {
-        io.read_byte(0x45)
+        }
+        //let mut state = self.io.borrow().read_byte(0x41);
+        //state &= 0b1111_1011;
+        //state |= (value as u8) << 2;
+        //self.io.borrow_mut().write_byte(0x41, state);
+        //if InterruptMode::LycLyConcidence.is_set(&self.io.borrow()) {
+        //    self.fire_lcdc_interrupt();
+        //}
     }
 }
 

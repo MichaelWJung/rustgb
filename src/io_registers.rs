@@ -8,6 +8,7 @@ const OFFSET_LCDC_STATUS: u16 = 0x41;
 const OFFSET_SCY: u16 = 0x42;
 const OFFSET_SCX: u16 = 0x43;
 const OFFSET_LY: u16 = 0x44;
+const OFFSET_LYC: u16 = 0x45;
 
 pub struct IoRegisters<'a, 'b, D>
     where 'b : 'a,
@@ -53,6 +54,7 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
             OFFSET_SCY => self.gpu.borrow().scy,
             OFFSET_SCX => self.gpu.borrow().scx,
             OFFSET_LY => self.gpu.borrow().get_current_line(),
+            OFFSET_LYC => self.gpu.borrow().lyc,
             _ => old_io,
         }
     }
@@ -84,6 +86,7 @@ impl <'a, 'b, D> Memory for IoRegisters<'a, 'b, D>
             OFFSET_SCY => self.gpu.borrow_mut().scy = value,
             OFFSET_SCX => self.gpu.borrow_mut().scx = value,
             OFFSET_LY => (),
+            OFFSET_LYC => self.gpu.borrow_mut().lyc = value,
             _ => self.old_io.borrow_mut().write_byte(address, value),
         }
     }
