@@ -84,6 +84,14 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
             _ => panic!("Memory address not known")
         }
     }
+
+    fn do_dma_transfer(&mut self, source: u8) {
+        let start = (source as u16) << 8;
+        for i in 0..0xA0 {
+            let byte = self.read_byte(start + i);
+            self.write_byte(0xFE00 + i, byte);
+        }
+    }
 }
 
 impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
@@ -106,6 +114,13 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
     }
 
     fn write_byte(&mut self, address: u16, value: u8) {
+        if address == 0xFF46 {
+            self.do_dma_transfer(value);
+        } else if address == 0xFFFF {
+            // TODO: Find better place for this
+            self.gpu.borrow_mut().vblank_interrupt_enabled = value & 1 != 0;
+            self.gpu.borrow_mut().state_interrupt_enabled = value & 2 != 0;
+        }
         let (memory_type, address) = self.address_to_type(address);
         match memory_type {
             MemoryType::GraphicsVram => self.gpu.borrow_mut().get_vram_mut().write_byte(address, value),
@@ -117,11 +132,6 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
             MemoryType::ZeroPage => self.zero_page.write_byte(address, value),
             MemoryType::Io => self.io.borrow_mut().write_byte(address, value),
         };
-        if address == 0xFFFF {
-            // TODO: Find better place for this
-            self.gpu.borrow_mut().vblank_interrupt_enabled = value & 1 != 0;
-            self.gpu.borrow_mut().state_interrupt_enabled = value & 2 != 0;
-        }
     }
 
     fn in_bios(&self) -> bool {
