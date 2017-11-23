@@ -11,6 +11,10 @@ pub struct Gpu<'a, D>
     oam: BlockMemory,
     io: &'a RefCell<BlockMemory>,
     display: D,
+    pub bg_on: bool,
+    pub sprites_on: bool,
+    pub large_sprites: bool,
+    pub bg_tile_map: TileMap,
     pub scx: u8,
     pub scy: u8,
     current_line: u8,
@@ -27,6 +31,10 @@ impl<'a, D> Gpu<'a, D>
             oam: BlockMemory::new(0x100),
             io,
             display,
+            bg_on: false,
+            sprites_on: false,
+            large_sprites: false,
+            bg_tile_map: TileMap::Map0,
             scx: 0,
             scy: 0,
             current_line: 0,
@@ -151,12 +159,11 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_bg_line(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
-        if !Self::bg_on(&self.io.borrow()) { return; }
-        let tile_map = Self::bg_tile_map(&self.io.borrow());
+        if !self.bg_on { return; }
         let tile_set = Self::bg_tile_set(&self.io.borrow());
         let x = self.scx;
         let y = display_line_number as u16 + self.scy as u16;
-        let mut tile_iter = tile_map.get_tile_iter(x, y as u8, &self.vram);
+        let mut tile_iter = self.bg_tile_map.get_tile_iter(x, y as u8, &self.vram);
 
         for i in 0..DIM_X {
             let tile = Tile::new(tile_iter.tile_number, tile_set, Palette::BackgroundPalette);
@@ -172,7 +179,7 @@ impl<'a, D> Gpu<'a, D>
     }
 
     fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
-        if !Self::sprites_on(&self.io.borrow()) { return; }
+        if !self.sprites_on { return; }
         let y = display_line_number as u16 + self.scy as u16 + 16;
         let x = self.scx as u16 + 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
@@ -218,26 +225,6 @@ impl<'a, D> Gpu<'a, D>
 
     fn get_gpu_control_register(io: &BlockMemory) -> u8 {
         io.read_byte(OFFSET_LCD_CONTROL_REGISTER)
-    }
-
-    fn bg_on(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register(io) & 1 != 0
-    }
-
-    fn sprites_on(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register(io) & (1 << 1) != 0
-    }
-
-    fn _large_sprites(io: &BlockMemory) -> bool {
-        Self::get_gpu_control_register(io) & (1 << 2) != 0
-    }
-
-    fn bg_tile_map(io: &BlockMemory) -> TileMap {
-        if Self::get_gpu_control_register(io) & (1 << 3) != 0 {
-            TileMap::Map1
-        } else {
-            TileMap::Map0
-        }
     }
 
     fn bg_tile_set(io: &BlockMemory) -> TileSet {
@@ -395,12 +382,23 @@ impl Tile {
     }
 }
 
-enum TileMap {
+pub enum TileMap {
     Map0,
     Map1,
 }
 
 impl TileMap {
+    pub fn from_bool(b: bool) -> TileMap {
+        if b { TileMap::Map1 } else { TileMap::Map0 }
+    }
+
+    pub fn to_bool(&self) -> bool {
+        match *self {
+            TileMap::Map0 => false,
+            TileMap::Map1 => true,
+        }
+    }
+
     fn get_tile_iter<'a, 'b: 'a, M: Memory>(&'a self, x: u8, y: u8, vram: &'b M) -> TileIterator<M> {
         let base_offset = match *self {
             TileMap::Map0 => OFFSET_TILE_MAP_0,
