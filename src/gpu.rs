@@ -1,6 +1,5 @@
 use display::{Display, COLS};
 use memory::{Memory, BlockMemory};
-use std::cell::RefCell;
 
 pub struct Gpu<D>
     where D: Display
@@ -271,7 +270,6 @@ const OFFSET_TILE_SET_0: u16 = 0x1000;
 const OFFSET_TILE_MAP_0: u16 = 0x1800;
 const OFFSET_TILE_MAP_1: u16 = 0x1C00;
 const TILE_SIZE_IN_BYTES: u16 = 0x10;
-const OFFSET_LCD_CONTROL_REGISTER: u16 = 0x0040;
 pub const CLOCK_TICKS_PER_FRAME: u32 = 70224;
 const NUM_SPRITES: u16 = 40;
 

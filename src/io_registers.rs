@@ -17,16 +17,16 @@ const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
 pub struct IoRegisters<'a, D>
     where D: Display + 'a
 {
-    old_io: &'a RefCell<BlockMemory>,
+    old_io: BlockMemory,
     gpu: &'a RefCell<Gpu<D>>,
 }
 
 impl<'a, D> IoRegisters<'a, D>
     where D: Display
 {
-    pub fn new(old_io: &'a RefCell<BlockMemory>, gpu: &'a RefCell<Gpu<D>>) -> IoRegisters<'a, D> {
+    pub fn new(gpu: &'a RefCell<Gpu<D>>) -> IoRegisters<'a, D> {
         IoRegisters {
-            old_io,
+            old_io: BlockMemory::new(0x80),
             gpu,
         }
     }
@@ -36,7 +36,7 @@ impl <'a, D> Memory for IoRegisters<'a, D>
     where D: Display
 {
     fn read_byte(&self, address: u16) -> u8 {
-        let old_io = self.old_io.borrow().read_byte(address);
+        let old_io = self.old_io.read_byte(address);
         match address {
             OFFSET_INTERRUPT_FLAGS => {
                 let gpu = self.gpu.borrow();
@@ -126,7 +126,7 @@ impl <'a, D> Memory for IoRegisters<'a, D>
             OFFSET_BACKGROUND_PALETTE => self.gpu.borrow_mut().palettes.bg = value,
             OFFSET_OBJECT0_PALETTE => self.gpu.borrow_mut().palettes.obj0 = value,
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow_mut().palettes.obj1 = value,
-            _ => self.old_io.borrow_mut().write_byte(address, value),
+            _ => self.old_io.write_byte(address, value),
         }
     }
 }
