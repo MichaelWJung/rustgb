@@ -1,10 +1,11 @@
 use display::Display;
+use io_registers::IoRegisters;
 use gpu::Gpu;
 
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref};
 
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8;
@@ -45,7 +46,7 @@ pub struct MemoryMap<'a, 'b, D>
     external_ram: BlockMemory,
     working_ram: BlockMemory,
     zero_page: BlockMemory,
-    io: &'a RefCell<BlockMemory>,
+    io: &'a RefCell<IoRegisters<'b, 'b, D>>,
     gpu: &'a RefCell<Gpu<'b, D>>,
 }
 
@@ -56,7 +57,7 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
         bios: &'a mut BlockMemory,
         gpu: &'a RefCell<Gpu<'b, D>>,
         rom: BlockMemory,
-        io: &'a RefCell<BlockMemory>
+        io: &'a RefCell<IoRegisters<'b, 'b, D>>
         ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
             bios_active: true,
@@ -106,19 +107,16 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
 
     fn write_byte(&mut self, address: u16, value: u8) {
         let (memory_type, address) = self.address_to_type(address);
-        let mut gpu = self.gpu.borrow_mut();
-        let mut io = self.io.borrow_mut();
-        let memory = match memory_type {
-            MemoryType::GraphicsVram => gpu.get_vram_mut(),
-            MemoryType::Bios => self.bios,
-            MemoryType::Rom => &mut self.rom,
-            MemoryType::ExternalRam => &mut self.external_ram,
-            MemoryType::WorkingRam => &mut self.working_ram,
-            MemoryType::Sprites => gpu.get_oam_mut(),
-            MemoryType::ZeroPage => &mut self.zero_page,
-            MemoryType::Io => io.deref_mut(),
+        match memory_type {
+            MemoryType::GraphicsVram => self.gpu.borrow_mut().get_vram_mut().write_byte(address, value),
+            MemoryType::Bios => self.bios.write_byte(address, value),
+            MemoryType::Rom => self.rom.write_byte(address, value),
+            MemoryType::ExternalRam => self.external_ram.write_byte(address, value),
+            MemoryType::WorkingRam => self.working_ram.write_byte(address, value),
+            MemoryType::Sprites => self.gpu.borrow_mut().get_oam_mut().write_byte(address, value),
+            MemoryType::ZeroPage => self.zero_page.write_byte(address, value),
+            MemoryType::Io => self.io.borrow_mut().write_byte(address, value),
         };
-        memory.write_byte(address, value)
     }
 
     fn in_bios(&self) -> bool {

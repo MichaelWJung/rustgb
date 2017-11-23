@@ -11,6 +11,9 @@ pub struct Gpu<'a, D>
     oam: BlockMemory,
     io: &'a RefCell<BlockMemory>,
     display: D,
+    pub scx: u8,
+    pub scy: u8,
+    current_line: u8,
 }
 
 impl<'a, D> Gpu<'a, D>
@@ -24,6 +27,9 @@ impl<'a, D> Gpu<'a, D>
             oam: BlockMemory::new(0x100),
             io,
             display,
+            scx: 0,
+            scy: 0,
+            current_line: 0,
         };
         gpu.set_mode(Mode::ScanlineOam);
         gpu
@@ -45,19 +51,17 @@ impl<'a, D> Gpu<'a, D>
         &mut self.oam
     }
 
-    fn set_mode(&mut self, mode: Mode) {
-        self.mode = mode;
-        let mode_bits = match mode {
+    pub fn get_mode(&self) -> u8 {
+        match self.mode {
             Mode::HorizontalBlank => 0,
             Mode::VerticalBlank => 1,
             Mode::ScanlineOam => 2,
             Mode::ScanlineVram => 3,
-        };
-        let mut state = self.io.borrow().read_byte(0x41);
-        state &= 0b11111100;
-        state |= mode_bits;
-        self.io.borrow_mut().write_byte(0x41, state);
+        }
+    }
 
+    fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
         match mode {
             Mode::HorizontalBlank => {
                 if InterruptMode::HorizontalBlank.is_set(&self.io.borrow()) {
@@ -150,9 +154,9 @@ impl<'a, D> Gpu<'a, D>
         if !Self::bg_on(&self.io.borrow()) { return; }
         let tile_map = Self::bg_tile_map(&self.io.borrow());
         let tile_set = Self::bg_tile_set(&self.io.borrow());
-        let x = Self::scx(&self.io.borrow());
-        let y = display_line_number as u16 + Self::scy(&self.io.borrow());
-        let mut tile_iter = tile_map.get_tile_iter(x as u8, y as u8, &self.vram);
+        let x = self.scx;
+        let y = display_line_number as u16 + self.scy as u16;
+        let mut tile_iter = tile_map.get_tile_iter(x, y as u8, &self.vram);
 
         for i in 0..DIM_X {
             let tile = Tile::new(tile_iter.tile_number, tile_set, Palette::BackgroundPalette);
@@ -169,8 +173,8 @@ impl<'a, D> Gpu<'a, D>
 
     fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
         if !Self::sprites_on(&self.io.borrow()) { return; }
-        let y = display_line_number as u16 + Self::scy(&self.io.borrow()) + 16;
-        let x = Self::scx(&self.io.borrow()) + 8;
+        let y = display_line_number as u16 + self.scy as u16 + 16;
+        let x = self.scx as u16 + 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
         for sprite in sprites.iter().rev() {
             let y_in_tile = y as i16 - sprite.y_position as i16;
@@ -195,28 +199,19 @@ impl<'a, D> Gpu<'a, D>
         self.display.redraw();
     }
 
-    fn scx(io: &BlockMemory) -> u16 {
-        io.read_byte(0x43) as u16
-    }
-
-    fn scy(io: &BlockMemory) -> u16 {
-        io.read_byte(0x42) as u16
-    }
-
     fn increment_current_line(&mut self) -> u8 {
-        let current_line = self.io.borrow_mut().read_byte(0x44) + 1;
-        self.io.borrow_mut().write_byte(0x44, current_line);
+        self.current_line += 1;
         //let coincidence = Self::get_lyc(&self.io.borrow()) == current_line;
         //self.set_coincidence_flag(coincidence);
-        current_line
+        self.current_line
     }
 
-    fn get_current_line(&self) -> u8 {
-        self.io.borrow().read_byte(0x44)
+    pub fn get_current_line(&self) -> u8 {
+        self.current_line
     }
 
     fn reset_current_line(&mut self) {
-        self.io.borrow_mut().write_byte(0x44, 0);
+        self.current_line = 0;
         //let coincidence = Self::get_lyc(&self.io.borrow()) == 0;
         //self.set_coincidence_flag(coincidence);
     }
