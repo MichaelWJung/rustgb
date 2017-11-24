@@ -59,7 +59,7 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let vblank_interrupt = gpu.vblank_interrupt_status as u8;
                 let state_interrupt = (gpu.state_interrupt_status as u8) << 1;
                 let timer_interrupt = (self.timer.borrow().timer_interrupt as u8) << 2;
-                old_io & 0b1111_1100 | vblank_interrupt | state_interrupt
+                old_io & 0b1111_1000 | vblank_interrupt | state_interrupt | timer_interrupt
             }
             OFFSET_LCD_CONTROL => {
                 let gpu = self.gpu.borrow();
