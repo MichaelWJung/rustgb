@@ -58,9 +58,12 @@ impl<M> Cpu<M>
     }
 
     fn handle_interrupts(&mut self) -> u8 {
-        if !self.registers.interrupt_master_enable { return 0; }
         let enabled_interrupts = self.memory.read_byte(0xFFFF);
         let interrupts_fired = self.memory.read_byte(0xFF0F) & enabled_interrupts;
+        if interrupts_fired != 0 {
+            self.registers.halt = false;
+        }
+        if !self.registers.interrupt_master_enable { return 0; }
         if interrupts_fired & Interrupt::VerticalBlank.to_bitmask() != 0 {
             self.start_interrupt_handler(Interrupt::VerticalBlank)
         } else if interrupts_fired & Interrupt::LcdStatus.to_bitmask() != 0 {
@@ -77,7 +80,6 @@ impl<M> Cpu<M>
     }
 
     fn start_interrupt_handler(&mut self, interrupt: Interrupt) -> u8 {
-        self.registers.halt = false;
         self.registers.interrupt_master_enable = false;
         let interrupts_fired = self.memory.read_byte(0xFF0F);
         self.memory.write_byte(0xFF0F, interrupts_fired & !interrupt.to_bitmask());
@@ -2042,9 +2044,7 @@ impl OpExecute for NOP {
 create_opcode_struct!(HALT);
 impl OpExecute for HALT {
     fn execute(&self, registers: &mut Registers, _memory: &mut Memory) {
-        if registers.interrupt_master_enable {
-            registers.halt = true;
-        }
+        registers.halt = true;
         registers.pc += 1;
         registers.cycles_of_last_command = 4;
     }
