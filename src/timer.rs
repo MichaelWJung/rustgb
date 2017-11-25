@@ -50,6 +50,7 @@ impl Timer {
 
     pub fn reset_divider(&mut self) {
         self.divider = 0;
+        self.base_clock = 0;
     }
 
     pub fn get_divider(&self) -> u8 {
