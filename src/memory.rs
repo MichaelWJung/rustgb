@@ -42,8 +42,7 @@ pub struct MemoryMap<'a, 'b, D>
 {
     bios_active: bool,
     bios: &'a mut BlockMemory,
-    rom: BlockMemory,
-    external_ram: BlockMemory,
+    mbc: Box<Memory>,
     working_ram: BlockMemory,
     zero_page: BlockMemory,
     io: &'a RefCell<IoRegisters<'b, D>>,
@@ -56,16 +55,15 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
     pub fn new(
         bios: &'a mut BlockMemory,
         gpu: &'a RefCell<Gpu<D>>,
-        rom: BlockMemory,
+        mbc: Box<Memory>,
         io: &'a RefCell<IoRegisters<'b, D>>
         ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
             bios_active: true,
             bios,
-            rom,
-            external_ram: BlockMemory::new(0x4000),
-            working_ram: BlockMemory::new(0x4000),
-            zero_page: BlockMemory::new(0x4000),
+            mbc,
+            working_ram: BlockMemory::new(0x2000),
+            zero_page: BlockMemory::new(0x80),
             io,
             gpu
         }
@@ -74,9 +72,9 @@ impl<'a, 'b, D> MemoryMap<'a, 'b, D>
     fn address_to_type(&self, address: u16) -> (MemoryType, u16) {
         match address {
             0x0000 ... 0x00FF if self.bios_active => (MemoryType::Bios, address),
-            0x0000 ... 0x7FFF => (MemoryType::Rom, address),
+            0x0000 ... 0x7FFF => (MemoryType::Mbc, address),
             0x8000 ... 0x9FFF => (MemoryType::GraphicsVram, address & 0x1FFF),
-            0xA000 ... 0xBFFF => (MemoryType::ExternalRam, address & 0x1FFF),
+            0xA000 ... 0xBFFF => (MemoryType::Mbc, address),
             0xC000 ... 0xFDFF => (MemoryType::WorkingRam, address & 0x1FFF),
             0xFE00 ... 0xFEFF => (MemoryType::Sprites, address & 0xFF),
             0xFF00 ... 0xFF7F => (MemoryType::Io, address & 0x7F),
@@ -103,8 +101,7 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
         let memory = match memory_type {
             MemoryType::GraphicsVram => gpu.get_vram(),
             MemoryType::Bios => self.bios,
-            MemoryType::Rom => &self.rom,
-            MemoryType::ExternalRam => &self.external_ram,
+            MemoryType::Mbc => self.mbc.deref(),
             MemoryType::WorkingRam => &self.working_ram,
             MemoryType::Sprites => gpu.get_oam(),
             MemoryType::ZeroPage => &self.zero_page,
@@ -121,8 +118,7 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
         match memory_type {
             MemoryType::GraphicsVram => self.gpu.borrow_mut().get_vram_mut().write_byte(address, value),
             MemoryType::Bios => self.bios.write_byte(address, value),
-            MemoryType::Rom => self.rom.write_byte(address, value),
-            MemoryType::ExternalRam => self.external_ram.write_byte(address, value),
+            MemoryType::Mbc => self.mbc.write_byte(address, value),
             MemoryType::WorkingRam => self.working_ram.write_byte(address, value),
             MemoryType::Sprites => self.gpu.borrow_mut().get_oam_mut().write_byte(address, value),
             MemoryType::ZeroPage => self.zero_page.write_byte(address, value),
@@ -141,9 +137,8 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
 
 enum MemoryType {
     Bios,
-    Rom,
+    Mbc,
     GraphicsVram,
-    ExternalRam,
     WorkingRam,
     Sprites,
     ZeroPage,

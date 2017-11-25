@@ -5,6 +5,7 @@ mod display;
 mod gpu;
 mod io_registers;
 mod keyboard;
+mod mbc;
 mod memory;
 mod timer;
 
@@ -37,11 +38,12 @@ pub fn run(file: &mut File) {
     let mut bios = File::open(path).expect(&format!("Error opening file: {}", BIOS_PATH));
 
     let rom = memory::BlockMemory::new_from_file(file);
+    let mbc = mbc::create_mbc(rom);
     let mut bios = memory::BlockMemory::new_from_file(&mut bios);
     let timer = RefCell::new(timer::Timer::new());
     let gpu = RefCell::new(gpu::Gpu::new(display));
     let io = RefCell::new(io_registers::IoRegisters::new(&gpu, &timer));
-    let memory_map = memory::MemoryMap::new(&mut bios, &gpu, rom, &io);
+    let memory_map = memory::MemoryMap::new(&mut bios, &gpu, mbc, &io);
     let mut cpu = cpu::Cpu::new(memory_map);
 
     let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME;
