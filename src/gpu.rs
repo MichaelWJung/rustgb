@@ -171,34 +171,37 @@ impl<D> Gpu<D>
     fn render_scanline(&mut self) {
         if !self.display_on { return; }
         let display_line_number = self.get_current_line();
-        let mut display_line_memory = [0; COLS];
-        self.render_bg_line(display_line_number, &mut display_line_memory);
-        self.render_sprites(display_line_number, &mut display_line_memory);
-        self.display.set_line(display_line_number, &display_line_memory);
+        let bg_pixels = self.render_bg_line(display_line_number);
+        let sprite_pixels = self.render_sprites(display_line_number);
+        let pixels = self.combine_pixels(bg_pixels, sprite_pixels);
+        self.display.set_line(display_line_number, &pixels);
     }
 
-    fn render_bg_line(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
-        if !self.bg_on { return; }
+    fn render_bg_line(&self, display_line_number: u8) -> [u8; COLS] {
+        let mut pixels = [0; COLS];
+        if !self.bg_on { return pixels; }
+
         let tile_set = self.bg_tile_set;
         let x = self.scx;
         let y = display_line_number as u16 + self.scy as u16;
         let mut tile_iter = self.bg_tile_map.get_tile_iter(x, y as u8, &self.vram);
 
         for i in 0..DIM_X {
-            let tile = Tile::new(tile_iter.tile_number, tile_set, Palette::BackgroundPalette);
+            let tile = Tile::new(tile_iter.tile_number, tile_set);
             let color = tile.get_color(
                 tile_iter.x as u8 % 8,
                 tile_iter.y as u8 % 8,
-                &self.vram,
-                &self.palettes
+                &self.vram
             );
-            display_line_memory[i] = color;
+            pixels[i] = color;
             tile_iter.next();
         }
+        pixels
     }
 
-    fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
-        if !self.sprites_on { return; }
+    fn render_sprites(&self, display_line_number: u8) -> [SpritePixel; COLS] {
+        let mut pixels = [SpritePixel { pixel: None, palette: None, priority: false }; COLS];
+        if !self.sprites_on { return pixels; }
         let y = display_line_number as u16 + 16;
         let x = 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
@@ -214,11 +217,34 @@ impl<D> Gpu<D>
                     x_in_tile as u8,
                     y_in_tile as u8,
                     &self.vram,
-                    &self.palettes
                 );
-                display_line_memory[i] = color;
+                let pixel = SpritePixel {
+                    pixel: if color != 0 { Some(color) } else { None },
+                    palette: Some(sprite.palette),
+                    priority: sprite.priority
+                };
+                pixels[i] = pixel;
             }
         }
+        pixels
+    }
+
+    fn combine_pixels(&self, bg_pixels: [u8; COLS], sprite_pixels: [SpritePixel; COLS]) -> [u8; COLS] {
+        let mut combined = [0; COLS];
+        for (i, (bg, sprite)) in bg_pixels
+            .iter()
+            .zip(sprite_pixels.iter())
+            .enumerate()
+        {
+            combined[i] = if *bg != 0 && !sprite.priority {
+                apply_palette(*bg, Palette::BackgroundPalette, &self.palettes)
+            } else if let Some(color) = sprite.pixel {
+                apply_palette(color, sprite.palette.unwrap(), &self.palettes)
+            } else {
+                apply_palette(*bg, Palette::BackgroundPalette, &self.palettes)
+            }
+        }
+        combined
     }
 
     fn render_screen(&mut self) {
@@ -245,6 +271,13 @@ impl<D> Gpu<D>
             self.fire_lcdc_interrupt();
         }
     }
+}
+
+#[derive(Copy, Clone)]
+struct SpritePixel {
+    pixel: Option<u8>,
+    palette: Option<Palette>,
+    priority: bool,
 }
 
 const SCANLINE_OAM_TIME: u32 = 80;
@@ -323,28 +356,25 @@ struct Tile {
     tile_set: TileSet,
     x_flip: bool,
     y_flip: bool,
-    large_tile: bool,
-    palette: Palette,
+    _large_tile: bool,
 }
 
 impl Tile {
-    fn new(tile_num: u8, tile_set: TileSet, palette: Palette) -> Tile {
+    fn new(tile_num: u8, tile_set: TileSet) -> Tile {
         Tile {
             tile_num,
             tile_set,
             x_flip: false,
             y_flip: false,
-            large_tile: false,
-            palette,
+            _large_tile: false,
         }
     }
 
-    fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M, palettes: &Palettes) -> u8 {
+    fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M) -> u8 {
         let x = if self.x_flip { 7 - x } else { x };
         let y = if self.y_flip { 7 - y } else { y };
         let line = self.get_line(y, vram);
-        let color = line[x as usize];
-        apply_palette(color, self.palette, palettes)
+        line[x as usize]
     }
 
     fn get_line<M: Memory>(&self, line_num: u8, vram: &M) -> [u8; 8] {
@@ -474,8 +504,7 @@ impl SpriteAttribute {
             tile_set: TileSet::Set1,
             x_flip: self.x_flip,
             y_flip: self.y_flip,
-            large_tile: false,
-            palette: self.palette,
+            _large_tile: false,
         }
     }
 }
