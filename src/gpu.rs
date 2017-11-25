@@ -199,8 +199,8 @@ impl<D> Gpu<D>
 
     fn render_sprites(&self, display_line_number: u8, display_line_memory: &mut [u8]) {
         if !self.sprites_on { return; }
-        let y = display_line_number as u16 + self.scy as u16 + 16;
-        let x = self.scx as u16 + 8;
+        let y = display_line_number as u16 + 16;
+        let x = 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
         for sprite in sprites.iter().rev() {
             let y_in_tile = y as i16 - sprite.y_position as i16;
