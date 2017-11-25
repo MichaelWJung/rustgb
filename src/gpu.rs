@@ -241,16 +241,9 @@ impl<D> Gpu<D>
     }
 
     fn check_fire_coincidence_interrupt(&mut self) {
-        if self.lyc == self.current_line {
-
+        if self.state_interrupt_lycly_coincidence && self.lyc == self.current_line {
+            self.fire_lcdc_interrupt();
         }
-        //let mut state = self.io.borrow().read_byte(0x41);
-        //state &= 0b1111_1011;
-        //state |= (value as u8) << 2;
-        //self.io.borrow_mut().write_byte(0x41, state);
-        //if InterruptMode::LycLyConcidence.is_set(&self.io.borrow()) {
-        //    self.fire_lcdc_interrupt();
-        //}
     }
 }
 
