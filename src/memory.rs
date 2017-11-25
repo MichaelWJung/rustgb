@@ -116,10 +116,6 @@ impl<'a, 'b: 'a, D> Memory for MemoryMap<'a, 'b, D>
     fn write_byte(&mut self, address: u16, value: u8) {
         if address == 0xFF46 {
             self.do_dma_transfer(value);
-        } else if address == 0xFFFF {
-            // TODO: Find better place for this
-            self.gpu.borrow_mut().vblank_interrupt_enabled = value & 1 != 0;
-            self.gpu.borrow_mut().state_interrupt_enabled = value & 2 != 0;
         }
         let (memory_type, address) = self.address_to_type(address);
         match memory_type {

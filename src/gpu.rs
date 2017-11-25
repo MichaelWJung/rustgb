@@ -25,8 +25,6 @@ pub struct Gpu<D>
 
     pub vblank_interrupt_status: bool,
     pub state_interrupt_status: bool,
-    pub vblank_interrupt_enabled: bool,
-    pub state_interrupt_enabled: bool,
 
     pub state_interrupt_vblank: bool,
     pub state_interrupt_hblank: bool,
@@ -59,8 +57,6 @@ impl<D> Gpu<D>
             palettes: Palettes::new(),
             vblank_interrupt_status: false,
             state_interrupt_status: false,
-            vblank_interrupt_enabled: false,
-            state_interrupt_enabled: false,
             state_interrupt_vblank: false,
             state_interrupt_hblank: false,
             state_interrupt_oam: false,

@@ -59,7 +59,7 @@ impl<M> Cpu<M>
 
     fn handle_interrupts(&mut self) -> u8 {
         let enabled_interrupts = self.memory.read_byte(0xFFFF);
-        let interrupts_fired = self.memory.read_byte(0xFF0F) & enabled_interrupts;
+        let interrupts_fired = self.memory.read_byte(0xFF0F) & enabled_interrupts & 0x1F;
         if interrupts_fired != 0 {
             self.registers.halt = false;
         }
