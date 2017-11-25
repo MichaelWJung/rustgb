@@ -347,6 +347,8 @@ impl Tile {
     }
 
     fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M, palettes: &Palettes) -> u8 {
+        let x = if self.x_flip { 7 - x } else { x };
+        let y = if self.y_flip { 7 - y } else { y };
         let line = self.get_line(y, vram);
         let color = line[x as usize];
         apply_palette(color, self.palette, palettes)
