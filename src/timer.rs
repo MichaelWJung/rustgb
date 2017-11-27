@@ -1,7 +1,5 @@
 pub struct Timer {
-    m_clock: u8,
-    base_clock: u64,
-    divider: u8,
+    internal_counter: u16,
 
     pub timer_counter: u8,
     pub timer_modulo: u8,
@@ -9,52 +7,59 @@ pub struct Timer {
     pub timer_speed: TimerSpeed,
 
     pub timer_interrupt: bool,
+
+    tima_reload_timer: Option<u8>,
 }
 
 impl Timer {
     pub fn new() -> Timer {
         Timer {
-            m_clock: 0,
-            base_clock: 0,
-            divider: 0,
+            internal_counter: 0,
             timer_counter: 0,
             timer_modulo: 0,
             timer_enabled: false,
             timer_speed: TimerSpeed::ClockOver1024,
             timer_interrupt: false,
+            tima_reload_timer: None,
         }
     }
 
     pub fn increase(&mut self, cycles: u8) {
-        assert!(cycles % 4 == 0);
-        self.m_clock += cycles / 4;
-
-        if self.m_clock >= 4 {
-            self.m_clock -= 4;
-            self.base_clock = self.base_clock.wrapping_add(1);
-
-            if self.base_clock % 16 == 0 {
-                self.divider = self.divider.wrapping_add(1);
-            }
-
-            if self.timer_enabled && self.base_clock % self.timer_speed.num_base_ticks() == 0 {
-                if self.timer_counter == 0xFF {
-                    self.timer_interrupt = true;
+        for _ in 0..cycles as u16 {
+            let new_counter = self.internal_counter.wrapping_add(1);
+            self.change_counter_to(new_counter);
+            if let Some(left) = self.tima_reload_timer {
+                if left == 0 {
+                    self.tima_reload_timer = None;
                     self.timer_counter = self.timer_modulo;
                 } else {
-                    self.timer_counter += 1;
+                    self.tima_reload_timer = Some(left - 1);
                 }
             }
         }
     }
 
     pub fn reset_divider(&mut self) {
-        self.divider = 0;
-        self.base_clock = 0;
+        self.change_counter_to(0);
     }
 
     pub fn get_divider(&self) -> u8 {
-        self.divider
+        ((self.internal_counter & 0xFF00) >> 8) as u8
+    }
+
+    fn change_counter_to(&mut self, to: u16) {
+        let bit = 1 << self.timer_speed.relevant_counter_bit();
+        let before = self.internal_counter & bit != 0;
+        self.internal_counter = to;
+        let after = self.internal_counter & bit != 0;
+        let falling_edge = before && !after;
+        if falling_edge && self.timer_enabled {
+            if self.timer_counter == 0xFF {
+                self.timer_interrupt = true;
+                self.tima_reload_timer = Some(4);
+            }
+            self.timer_counter = self.timer_counter.wrapping_add(1);
+        }
     }
 }
 
@@ -85,12 +90,12 @@ impl TimerSpeed {
         }
     }
 
-    fn num_base_ticks(&self) -> u64 {
+    fn relevant_counter_bit(&self) -> usize {
         match *self {
-            TimerSpeed::ClockOver1024 => 64,
-            TimerSpeed::ClockOver16 => 1,
-            TimerSpeed::ClockOver64 => 4,
-            TimerSpeed::ClockOver256 => 16,
+            TimerSpeed::ClockOver1024 => 9,
+            TimerSpeed::ClockOver16 => 3,
+            TimerSpeed::ClockOver64 => 5,
+            TimerSpeed::ClockOver256 => 7,
         }
     }
 }
