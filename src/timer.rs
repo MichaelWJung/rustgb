@@ -9,6 +9,7 @@ pub struct Timer {
     pub timer_interrupt: bool,
 
     tima_reload_timer: Option<u8>,
+    old_tima_relevant_bit: bool,
 }
 
 impl Timer {
@@ -21,6 +22,8 @@ impl Timer {
             timer_speed: TimerSpeed::ClockOver1024,
             timer_interrupt: false,
             tima_reload_timer: None,
+
+            old_tima_relevant_bit: false,
         }
     }
 
@@ -48,18 +51,19 @@ impl Timer {
     }
 
     fn change_counter_to(&mut self, to: u16) {
-        let bit = 1 << self.timer_speed.relevant_counter_bit();
-        let before = self.internal_counter & bit != 0;
         self.internal_counter = to;
-        let after = self.internal_counter & bit != 0;
+        let bit = 1 << self.timer_speed.relevant_counter_bit();
+        let before = self.old_tima_relevant_bit;
+        let after = (self.internal_counter & bit != 0) && self.timer_enabled;
         let falling_edge = before && !after;
-        if falling_edge && self.timer_enabled {
+        if falling_edge {
             if self.timer_counter == 0xFF {
                 self.timer_interrupt = true;
                 self.tima_reload_timer = Some(4);
             }
             self.timer_counter = self.timer_counter.wrapping_add(1);
         }
+        self.old_tima_relevant_bit = after;
     }
 }
 
