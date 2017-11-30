@@ -21,27 +21,24 @@ impl Tile {
         }
     }
 
-    pub fn get_color<M: Memory>(&self, x: u8, y: u8, vram: &M) -> u8 {
+    pub fn get_color(&self, x: u8, y: u8, vram: &Memory) -> u8 {
         let x = if self.x_flip { 7 - x } else { x };
         let y = if self.y_flip { 7 - y } else { y };
-        let line = self.get_line(y, vram);
-        line[x as usize]
+        self.get_pixel_from_memory(x, y, vram)
     }
 
-    fn get_line<M: Memory>(&self, line_num: u8, vram: &M) -> [u8; 8] {
-        let address = self.get_line_address(line_num);
+    fn get_pixel_from_memory(&self, x: u8, y: u8, vram: &Memory) -> u8 {
+        let address = self.get_line_address(y);
         let low_bits = vram.read_byte(address);
         let high_bits = vram.read_byte(address + 1);
-        let mut line = [0; 8];
-        for i in 0..8 {
-            if low_bits & (0x80 >> i) != 0 {
-                line[i] += 1;
-            }
-            if high_bits & (0x80 >> i) != 0 {
-                line[i] += 2;
-            }
+        let mut pixel = 0;
+        if low_bits & (0x80 >> x) != 0 {
+            pixel += 1;
         }
-        line
+        if high_bits & (0x80 >> x) != 0 {
+            pixel += 2;
+        }
+        pixel
     }
 
     fn get_line_address(&self, line_num: u8) -> u16 {
