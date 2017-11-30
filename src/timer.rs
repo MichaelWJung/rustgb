@@ -35,6 +35,7 @@ impl Timer {
                 if left == 0 {
                     self.tima_reload_timer = None;
                     self.timer_counter = self.timer_modulo;
+                    self.timer_interrupt = true;
                 } else {
                     self.tima_reload_timer = Some(left - 1);
                 }
@@ -58,8 +59,7 @@ impl Timer {
         let falling_edge = before && !after;
         if falling_edge {
             if self.timer_counter == 0xFF {
-                self.timer_interrupt = true;
-                self.tima_reload_timer = Some(4);
+                self.tima_reload_timer = Some(3);
             }
             self.timer_counter = self.timer_counter.wrapping_add(1);
         }
