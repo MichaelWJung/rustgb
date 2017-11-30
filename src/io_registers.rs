@@ -69,7 +69,7 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let bg_tile_map = (gpu.bg_tile_map.to_bool() as u8) << 3;
                 let bg_tile_set = (gpu.bg_tile_set.to_bool() as u8) << 4;
                 let window_on = (gpu.window_on as u8) << 5;
-                let window_tile_map = (gpu.bg_tile_map.to_bool() as u8) << 6;
+                let window_tile_map = (gpu.window_tile_map.to_bool() as u8) << 6;
                 let display_on = (gpu.get_display_on() as u8) << 7;
                 bg_on | sprites_on | large_sprites | bg_tile_map | bg_tile_set
                       | window_on | window_tile_map | display_on
