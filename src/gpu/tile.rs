@@ -62,9 +62,9 @@ pub struct TileIterator<'a, M>
     where M: Memory + 'a
 {
     bg_x: u8,
-    pub x: u8,
-    pub y: u8,
-    pub tile_number: u8,
+    x: u8,
+    y: u8,
+    tile_number: u8,
     tile_map: TileMap,
     vram: &'a M
 }
@@ -90,6 +90,11 @@ impl<'a, M> TileIterator<'a, M>
         if self.x == 0 {
             *self = Self::new(self.bg_x, self.y, self.tile_map, &self.vram);
         }
+    }
+
+    pub fn get_pixel_color(&self, tile_set: TileSet) -> u8 {
+        let tile = Tile::new(self.tile_number, tile_set);
+        tile.get_color(self.x as u8 % 8, self.y as u8 % 8, self.vram)
     }
 }
 

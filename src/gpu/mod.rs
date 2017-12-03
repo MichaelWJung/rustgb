@@ -194,19 +194,11 @@ impl<D> Gpu<D>
         let mut pixels = [0; COLS];
         if !self.bg_on { return pixels; }
 
-        let tile_set = self.bg_tile_set;
         let x = self.scx;
-        let y = display_line_number as u16 + self.scy as u16;
-        let mut tile_iter = TileIterator::new(x, y as u8, self.bg_tile_map, &self.vram);
-
+        let y = display_line_number.wrapping_add(self.scy);
+        let mut tile_iter = TileIterator::new(x, y, self.bg_tile_map, &self.vram);
         for i in 0..DIM_X {
-            let tile = Tile::new(tile_iter.tile_number, tile_set);
-            let color = tile.get_color(
-                tile_iter.x as u8 % 8,
-                tile_iter.y as u8 % 8,
-                &self.vram
-            );
-            pixels[i] = color;
+            pixels[i] = tile_iter.get_pixel_color(self.bg_tile_set);
             tile_iter.next();
         }
         pixels
