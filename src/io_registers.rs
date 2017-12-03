@@ -66,10 +66,10 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let bg_on = gpu.bg_on as u8;
                 let sprites_on = (gpu.sprites_on as u8) << 1;
                 let large_sprites = (gpu.large_sprites as u8) << 2;
-                let bg_tile_map = (gpu.bg_tile_map.to_bool() as u8) << 3;
-                let bg_tile_set = (gpu.bg_tile_set.to_bool() as u8) << 4;
+                let bg_tile_map = (tile_map_to_bool(gpu.bg_tile_map) as u8) << 3;
+                let bg_tile_set = (tile_set_to_bool(gpu.bg_tile_set) as u8) << 4;
                 let window_on = (gpu.window_on as u8) << 5;
-                let window_tile_map = (gpu.window_tile_map.to_bool() as u8) << 6;
+                let window_tile_map = (tile_map_to_bool(gpu.window_tile_map) as u8) << 6;
                 let display_on = (gpu.get_display_on() as u8) << 7;
                 bg_on | sprites_on | large_sprites | bg_tile_map | bg_tile_set
                       | window_on | window_tile_map | display_on
@@ -140,10 +140,10 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 gpu.bg_on = bg_on;
                 gpu.sprites_on = sprites_on;
                 gpu.large_sprites = large_sprites;
-                gpu.bg_tile_map = TileMap::from_bool(bg_tile_map);
-                gpu.bg_tile_set = TileSet::from_bool(bg_tile_set);
+                gpu.bg_tile_map = bool_to_tile_map(bg_tile_map);
+                gpu.bg_tile_set = bool_to_tile_set(bg_tile_set);
                 gpu.window_on = window_on;
-                gpu.window_tile_map = TileMap::from_bool(window_tile_map);
+                gpu.window_tile_map = bool_to_tile_map(window_tile_map);
                 if gpu.get_display_on() != display_on {
                     gpu.set_display_on(display_on);
                 }
@@ -157,5 +157,27 @@ impl <'a, D> Memory for IoRegisters<'a, D>
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow_mut().palettes.obj1 = value,
             _ => self.old_io.write_byte(address, value),
         }
+    }
+}
+
+fn bool_to_tile_set(b: bool) -> TileSet {
+    if b { TileSet::Set1 } else { TileSet::Set0 }
+}
+
+fn tile_set_to_bool(tile_set: TileSet) -> bool {
+    match tile_set {
+        TileSet::Set0 => false,
+        TileSet::Set1 => true,
+    }
+}
+
+fn bool_to_tile_map(b: bool) -> TileMap {
+    if b { TileMap::Map1 } else { TileMap::Map0 }
+}
+
+fn tile_map_to_bool(tile_map: TileMap) -> bool {
+    match tile_map {
+        TileMap::Map0 => false,
+        TileMap::Map1 => true,
     }
 }

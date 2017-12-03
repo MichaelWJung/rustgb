@@ -8,12 +8,11 @@ mod tests;
 
 use display::{Display, COLS};
 use memory::{Memory, BlockMemory};
-use gpu::constants::*;
-use gpu::palette::*;
-use gpu::sprite::*;
-use gpu::tile::*;
-pub use gpu::constants::CLOCK_TICKS_PER_FRAME;
-pub use gpu::tile::{TileMap, TileSet};
+use self::constants::*;
+use self::palette::*;
+use self::sprite::*;
+use self::tile::{Tile, TileIterator};
+pub use self::constants::CLOCK_TICKS_PER_FRAME;
 
 pub struct Gpu<D>
     where D: Display
@@ -198,7 +197,7 @@ impl<D> Gpu<D>
         let tile_set = self.bg_tile_set;
         let x = self.scx;
         let y = display_line_number as u16 + self.scy as u16;
-        let mut tile_iter = self.bg_tile_map.get_tile_iter(x, y as u8, &self.vram);
+        let mut tile_iter = TileIterator::new(x, y as u8, self.bg_tile_map, &self.vram);
 
         for i in 0..DIM_X {
             let tile = Tile::new(tile_iter.tile_number, tile_set);
@@ -293,5 +292,17 @@ enum Mode {
     VerticalBlank = 1,
     ScanlineOam = 2,
     ScanlineVram = 3,
+}
+
+#[derive(Copy, Clone)]
+pub enum TileMap {
+    Map0,
+    Map1,
+}
+
+#[derive(Copy, Clone)]
+pub enum TileSet {
+    Set0,
+    Set1,
 }
 
