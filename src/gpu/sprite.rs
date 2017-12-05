@@ -42,16 +42,6 @@ impl SpriteAttribute {
         }
     }
 
-    pub fn get_tile(&self) -> Tile {
-        Tile {
-            tile_num: self.tile_num,
-            tile_set: TileSet::Set1,
-            x_flip: self.x_flip,
-            y_flip: self.y_flip,
-            _large_tile: false,
-        }
-    }
-
     pub fn get_x_pos(&self) -> u8 {
         self.x_position
     }
@@ -60,8 +50,20 @@ impl SpriteAttribute {
         self.y_position
     }
 
+    pub fn get_tile_num(&self) -> u8 {
+        self.tile_num
+    }
+
     pub fn has_priority(&self) -> bool {
         self.priority
+    }
+
+    pub fn has_x_flip(&self) -> bool {
+        self.x_flip
+    }
+
+    pub fn has_y_flip(&self) -> bool {
+        self.y_flip
     }
 
     pub fn get_palette(&self) -> Palette {

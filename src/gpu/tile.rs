@@ -1,13 +1,14 @@
 use memory::Memory;
 use gpu::*;
+use gpu::sprite::SpriteAttribute;
 
 #[derive(Copy, Clone)]
 pub struct Tile {
-    pub tile_num: u8,
-    pub tile_set: TileSet,
-    pub x_flip: bool,
-    pub y_flip: bool,
-    pub _large_tile: bool,
+    tile_num: u8,
+    tile_set: TileSet,
+    x_flip: bool,
+    y_flip: bool,
+    _large_tile: bool,
 }
 
 impl Tile {
@@ -17,6 +18,16 @@ impl Tile {
             tile_set,
             x_flip: false,
             y_flip: false,
+            _large_tile: false,
+        }
+    }
+
+    pub fn from_sprite(sprite: &SpriteAttribute) -> Tile {
+        Tile {
+            tile_num: sprite.get_tile_num(),
+            tile_set: TileSet::Set1,
+            x_flip: sprite.has_x_flip(),
+            y_flip: sprite.has_y_flip(),
             _large_tile: false,
         }
     }

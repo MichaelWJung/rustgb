@@ -217,7 +217,7 @@ impl<D> Gpu<D>
                 let x = i as u16 + x;
                 let x_in_tile = x as i16 - sprite.get_x_pos() as i16;
                 if x_in_tile < 0 || x_in_tile >= 8 { continue; }
-                let tile = sprite.get_tile();
+                let tile = Tile::from_sprite(sprite);
                 let color = tile.get_color(
                     x_in_tile as u8,
                     y_in_tile as u8,
