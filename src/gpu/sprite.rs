@@ -18,7 +18,7 @@ pub struct SpriteAttribute {
 }
 
 impl SpriteAttribute {
-    fn new(memory: &[u8]) -> SpriteAttribute {
+    fn new(memory: [u8; 4]) -> SpriteAttribute {
         let x_position = memory[1];
         let y_position = memory[0];
         let tile_num = memory[2];
@@ -58,7 +58,7 @@ pub fn get_sprite_attributes_from_oam(oam: &BlockMemory) -> Vec<SpriteAttribute>
     attributes.reserve_exact(NUM_SPRITES as usize);
     for i in 0..NUM_SPRITES {
         let from = i * 0x4;
-        attributes.push(SpriteAttribute::new(&oam.read_4_bytes(from)));
+        attributes.push(SpriteAttribute::new(oam.read_4_bytes(from)));
     }
     attributes
 }
