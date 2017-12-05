@@ -211,11 +211,11 @@ impl<D> Gpu<D>
         let x = 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
         for sprite in sprites.iter().rev() {
-            let y_in_tile = y as i16 - sprite.y_position as i16;
+            let y_in_tile = y as i16 - sprite.get_y_pos() as i16;
             if y_in_tile < 0 || y_in_tile >= 8 { continue; }
             for i in 0..DIM_X {
                 let x = i as u16 + x;
-                let x_in_tile = x as i16 - sprite.x_position as i16;
+                let x_in_tile = x as i16 - sprite.get_x_pos() as i16;
                 if x_in_tile < 0 || x_in_tile >= 8 { continue; }
                 let tile = sprite.get_tile();
                 let color = tile.get_color(
@@ -225,8 +225,8 @@ impl<D> Gpu<D>
                 );
                 let pixel = SpritePixel {
                     pixel: if color != 0 { Some(color) } else { None },
-                    palette: Some(sprite.palette),
-                    priority: sprite.priority
+                    palette: Some(sprite.get_palette()),
+                    priority: sprite.has_priority(),
                 };
                 pixels[i] = pixel;
             }
