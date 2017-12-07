@@ -40,36 +40,40 @@ impl Tile {
     }
 }
 
-pub struct TileIterator<'a>
-{
+pub struct TileIterator<'a> {
     bg_x: u8,
-    x: u8,
-    y: u8,
+    tile_x: u8,
+    tile_y: u8,
     tile_num: u8,
     tile_map: TileMap,
-    vram: &'a Vram
+    vram: &'a Vram,
 }
 
-impl<'a> TileIterator<'a>
-{
+impl<'a> TileIterator<'a> {
     pub fn new(x: u8, y: u8, tile_map: TileMap, vram: &'a Vram) -> TileIterator {
         let row = y / 8;
         let col = x / 8;
         let tile_num = vram.get_tile_num(tile_map, row, col);
-        TileIterator { bg_x: x, x: x % 8, y, tile_num, tile_map, vram }
+        TileIterator {
+            bg_x: x,
+            tile_x: x % 8,
+            tile_y: y,
+            tile_num,
+            tile_map,
+            vram,
+        }
     }
 
     pub fn next(&mut self) {
-        self.x = (self.x + 1) % 8;
+        self.tile_x = (self.tile_x + 1) % 8;
         self.bg_x = self.bg_x.wrapping_add(1);
-        if self.x == 0 {
-            *self = Self::new(self.bg_x, self.y, self.tile_map, &self.vram);
+        if self.tile_x == 0 {
+            *self = Self::new(self.bg_x, self.tile_y, self.tile_map, &self.vram);
         }
     }
 
     pub fn get_pixel_color(&self, tile_set: TileSet) -> u8 {
         let tile = Tile::new(self.tile_num, tile_set);
-        tile.get_color(self.x as u8 % 8, self.y as u8 % 8, self.vram)
+        tile.get_color(self.tile_x as u8 % 8, self.tile_y as u8 % 8, self.vram)
     }
 }
-
