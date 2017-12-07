@@ -2,6 +2,7 @@ mod constants;
 mod palette;
 mod sprite;
 mod tile;
+mod vram;
 
 #[cfg(test)]
 mod tests;
@@ -12,6 +13,7 @@ use self::constants::*;
 use self::palette::*;
 use self::sprite::*;
 use self::tile::{Tile, TileIterator};
+use self::vram::Vram;
 pub use self::constants::CLOCK_TICKS_PER_FRAME;
 
 pub struct Gpu<D>
@@ -19,7 +21,7 @@ pub struct Gpu<D>
 {
     mode: Mode,
     mode_clock: u32,
-    vram: BlockMemory,
+    vram: Vram,
     oam: BlockMemory,
     display: D,
     pub bg_on: bool,
@@ -52,7 +54,7 @@ impl<D> Gpu<D>
         let mut gpu = Gpu {
             mode: Mode::ScanlineOam,
             mode_clock: 0,
-            vram: BlockMemory::new(0x2000),
+            vram: Vram::new(),
             oam: BlockMemory::new(0x100),
             display,
             bg_on: false,

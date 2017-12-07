@@ -1,6 +1,7 @@
 use memory::Memory;
-use gpu::*;
-use gpu::sprite::SpriteAttribute;
+use super::*;
+use super::sprite::SpriteAttribute;
+use super::vram::Vram;
 
 #[derive(Copy, Clone)]
 pub struct Tile {
@@ -32,58 +33,27 @@ impl Tile {
         }
     }
 
-    pub fn get_color(&self, x: u8, y: u8, vram: &Memory) -> u8 {
+    pub fn get_color(&self, x: u8, y: u8, vram: &Vram) -> u8 {
         let x = if self.x_flip { 7 - x } else { x };
         let y = if self.y_flip { 7 - y } else { y };
-        self.get_pixel_from_memory(x, y, vram)
-    }
-
-    fn get_pixel_from_memory(&self, x: u8, y: u8, vram: &Memory) -> u8 {
-        let address = self.get_line_address(y);
-        let low_bits = vram.read_byte(address);
-        let high_bits = vram.read_byte(address + 1);
-        let mut pixel = 0;
-        if low_bits & (0x80 >> x) != 0 {
-            pixel += 1;
-        }
-        if high_bits & (0x80 >> x) != 0 {
-            pixel += 2;
-        }
-        pixel
-    }
-
-    fn get_line_address(&self, line_num: u8) -> u16 {
-        let base_offset;
-        let tile_offset;
-        match self.tile_set {
-            TileSet::Set0 => {
-                base_offset = OFFSET_TILE_SET_0;
-                tile_offset = self.tile_num as i8 as i32 * TILE_SIZE_IN_BYTES as i32;
-            }
-            TileSet::Set1 => {
-                base_offset = OFFSET_TILE_SET_1;
-                tile_offset = self.tile_num as i32 * TILE_SIZE_IN_BYTES as i32;
-            }
-        };
-        (base_offset as i32 + tile_offset) as u16 + line_num as u16 * 0x2
+        let tile_row = vram.get_tile_row(self.tile_set, self.tile_num, y);
+        tile_row.get_pixel(x)
     }
 }
 
-pub struct TileIterator<'a, M>
-    where M: Memory + 'a
+pub struct TileIterator<'a>
 {
     bg_x: u8,
     x: u8,
     y: u8,
     tile_number: u8,
     tile_map: TileMap,
-    vram: &'a M
+    vram: &'a Vram
 }
 
-impl<'a, M> TileIterator<'a, M>
-    where M: Memory
+impl<'a> TileIterator<'a>
 {
-    pub fn new(x: u8, y: u8, tile_map: TileMap, vram: &'a M) -> TileIterator<M> {
+    pub fn new(x: u8, y: u8, tile_map: TileMap, vram: &'a Vram) -> TileIterator {
         let base_offset = match tile_map {
             TileMap::Map0 => OFFSET_TILE_MAP_0,
             TileMap::Map1 => OFFSET_TILE_MAP_1,
