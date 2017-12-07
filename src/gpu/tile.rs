@@ -1,4 +1,3 @@
-use memory::Memory;
 use super::*;
 use super::sprite::SpriteAttribute;
 use super::vram::Vram;
@@ -46,7 +45,7 @@ pub struct TileIterator<'a>
     bg_x: u8,
     x: u8,
     y: u8,
-    tile_number: u8,
+    tile_num: u8,
     tile_map: TileMap,
     vram: &'a Vram
 }
@@ -54,15 +53,10 @@ pub struct TileIterator<'a>
 impl<'a> TileIterator<'a>
 {
     pub fn new(x: u8, y: u8, tile_map: TileMap, vram: &'a Vram) -> TileIterator {
-        let base_offset = match tile_map {
-            TileMap::Map0 => OFFSET_TILE_MAP_0,
-            TileMap::Map1 => OFFSET_TILE_MAP_1,
-        };
         let row = y / 8;
         let col = x / 8;
-        let tile_offset = row as u16 * 32 + col as u16;
-        let tile_number = vram.read_byte(base_offset + tile_offset);
-        TileIterator { bg_x: x, x: x % 8, y, tile_number, tile_map, vram }
+        let tile_num = vram.get_tile_num(tile_map, row, col);
+        TileIterator { bg_x: x, x: x % 8, y, tile_num, tile_map, vram }
     }
 
     pub fn next(&mut self) {
@@ -74,7 +68,7 @@ impl<'a> TileIterator<'a>
     }
 
     pub fn get_pixel_color(&self, tile_set: TileSet) -> u8 {
-        let tile = Tile::new(self.tile_number, tile_set);
+        let tile = Tile::new(self.tile_num, tile_set);
         tile.get_color(self.x as u8 % 8, self.y as u8 % 8, self.vram)
     }
 }

@@ -1,8 +1,12 @@
 use memory::{BlockMemory, Memory};
-use super::TileSet;
-use super::constants::OFFSET_TILE_SET_0;
-use super::constants::OFFSET_TILE_SET_1;
-use super::constants::TILE_SIZE_IN_BYTES;
+use super::{TileMap, TileSet};
+
+const OFFSET_TILE_SET_1: u16 = 0x0000;
+// Offset to the 0th tile. There are negative tile numbers in tile set 1
+const OFFSET_TILE_SET_0: u16 = 0x1000;
+const OFFSET_TILE_MAP_0: u16 = 0x1800;
+const OFFSET_TILE_MAP_1: u16 = 0x1C00;
+const TILE_SIZE_IN_BYTES: u16 = 0x10;
 
 pub struct Vram {
     memory: BlockMemory,
@@ -31,6 +35,15 @@ impl Vram {
             low_bits: self.memory.read_byte(address),
             high_bits: self.memory.read_byte(address + 1),
         }
+    }
+
+    pub fn get_tile_num(&self, tile_map: TileMap, row: u8, col: u8) -> u8 {
+        let base_offset = match tile_map {
+            TileMap::Map0 => OFFSET_TILE_MAP_0,
+            TileMap::Map1 => OFFSET_TILE_MAP_1,
+        };
+        let tile_offset = row as u16 * 32 + col as u16;
+        self.memory.read_byte(base_offset + tile_offset)
     }
 }
 
