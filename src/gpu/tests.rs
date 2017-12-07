@@ -1,4 +1,5 @@
 use super::*;
+use super::vram::*;
 use display::{Display, PIXELS, COLS};
 struct MockDisplay<'a> {
     pixels: &'a mut [u8; PIXELS],
@@ -30,11 +31,11 @@ fn test_simple_background_tile_map_0_set_0() {
         let display = MockDisplay::new(&mut pixels);
         let mut gpu = Gpu::new(display);
         {
-            gpu.palettes.bg = 0b11100100;
-            gpu.set_display_on(true);
-            gpu.bg_tile_set = TileSet::Set0;
-            gpu.bg_tile_map = TileMap::Map0;
-            gpu.bg_on = true;
+            gpu.state.palettes.bg = 0b11100100;
+            gpu.state.set_display_on(true);
+            gpu.state.bg_tile_set = TileSet::Set0;
+            gpu.state.bg_tile_map = TileMap::Map0;
+            gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
             vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
             vram.write_byte(OFFSET_TILE_SET_0 + 0x01, 0b10101010);
@@ -83,11 +84,11 @@ fn test_simple_background_tile_map_1_set_0() {
         let display = MockDisplay::new(&mut pixels);
         let mut gpu = Gpu::new(display);
         {
-            gpu.palettes.bg = 0b11100100;
-            gpu.set_display_on(true);
-            gpu.bg_tile_set = TileSet::Set0;
-            gpu.bg_tile_map = TileMap::Map1;
-            gpu.bg_on = true;
+            gpu.state.palettes.bg = 0b11100100;
+            gpu.state.set_display_on(true);
+            gpu.state.bg_tile_set = TileSet::Set0;
+            gpu.state.bg_tile_map = TileMap::Map1;
+            gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
             vram.write_byte(OFFSET_TILE_SET_0 + 0x00, 0b10101010);
             vram.write_byte(OFFSET_TILE_SET_0 + 0x01, 0b10101010);
@@ -124,11 +125,11 @@ fn test_simple_background_tile_map_0_set_1() {
         let display = MockDisplay::new(&mut pixels);
         let mut gpu = Gpu::new(display);
         {
-            gpu.palettes.bg = 0b11100100;
-            gpu.set_display_on(true);
-            gpu.bg_tile_set = TileSet::Set1;
-            gpu.bg_tile_map = TileMap::Map0;
-            gpu.bg_on = true;
+            gpu.state.palettes.bg = 0b11100100;
+            gpu.state.set_display_on(true);
+            gpu.state.bg_tile_set = TileSet::Set1;
+            gpu.state.bg_tile_map = TileMap::Map0;
+            gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
             vram.write_byte(OFFSET_TILE_SET_1 + 0x00, 0b10101010);
             vram.write_byte(OFFSET_TILE_SET_1 + 0x01, 0b10101010);

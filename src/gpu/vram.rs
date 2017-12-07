@@ -1,12 +1,12 @@
 use memory::{BlockMemory, Memory};
 use super::{TileMap, TileSet};
 
-const OFFSET_TILE_SET_1: u16 = 0x0000;
+pub const OFFSET_TILE_SET_1: u16 = 0x0000;
 // Offset to the 0th tile. There are negative tile numbers in tile set 1
-const OFFSET_TILE_SET_0: u16 = 0x1000;
-const OFFSET_TILE_MAP_0: u16 = 0x1800;
-const OFFSET_TILE_MAP_1: u16 = 0x1C00;
-const TILE_SIZE_IN_BYTES: u16 = 0x10;
+pub const OFFSET_TILE_SET_0: u16 = 0x1000;
+pub const OFFSET_TILE_MAP_0: u16 = 0x1800;
+pub const OFFSET_TILE_MAP_1: u16 = 0x1C00;
+pub const TILE_SIZE_IN_BYTES: u16 = 0x10;
 
 pub struct Vram {
     memory: BlockMemory,

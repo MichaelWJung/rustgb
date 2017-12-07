@@ -16,14 +16,8 @@ use self::tile::{Tile, TileIterator};
 use self::vram::Vram;
 pub use self::constants::CLOCK_TICKS_PER_FRAME;
 
-pub struct Gpu<D>
-    where D: Display
-{
+pub struct GpuState {
     mode: Mode,
-    mode_clock: u32,
-    vram: Vram,
-    oam: BlockMemory,
-    display: D,
     pub bg_on: bool,
     pub sprites_on: bool,
     pub large_sprites: bool,
@@ -47,35 +41,70 @@ pub struct Gpu<D>
     pub state_interrupt_lycly_coincidence: bool,
 }
 
+impl GpuState {
+    pub fn set_display_on(&mut self, on: bool) {
+        self.display_on = on;
+    }
+
+    pub fn get_display_on(&self) -> bool {
+        self.display_on
+    }
+
+    pub fn get_mode(&self) -> u8 {
+        match self.mode {
+            Mode::HorizontalBlank => 0,
+            Mode::VerticalBlank => 1,
+            Mode::ScanlineOam => 2,
+            Mode::ScanlineVram => 3,
+        }
+    }
+
+    pub fn get_current_line(&self) -> u8 {
+        self.current_line
+    }
+}
+
+pub struct Gpu<D>
+    where D: Display
+{
+    mode_clock: u32,
+    vram: Vram,
+    oam: BlockMemory,
+    display: D,
+    pub state: GpuState,
+}
+
 impl<D> Gpu<D>
     where D: Display
 {
     pub fn new(display: D) -> Gpu<D> {
         let mut gpu = Gpu {
-            mode: Mode::ScanlineOam,
             mode_clock: 0,
             vram: Vram::new(),
             oam: BlockMemory::new(0x100),
             display,
-            bg_on: false,
-            sprites_on: false,
-            large_sprites: false,
-            bg_tile_map: TileMap::Map0,
-            bg_tile_set: TileSet::Set0,
-            window_on: false,
-            window_tile_map: TileMap::Map0,
-            display_on: false,
-            scx: 0,
-            scy: 0,
-            current_line: 0,
-            lyc: 0,
-            palettes: Palettes::new(),
-            vblank_interrupt_status: false,
-            state_interrupt_status: false,
-            state_interrupt_vblank: false,
-            state_interrupt_hblank: false,
-            state_interrupt_oam: false,
-            state_interrupt_lycly_coincidence: false,
+            state: GpuState {
+                mode: Mode::ScanlineOam,
+                bg_on: false,
+                sprites_on: false,
+                large_sprites: false,
+                bg_tile_map: TileMap::Map0,
+                bg_tile_set: TileSet::Set0,
+                window_on: false,
+                window_tile_map: TileMap::Map0,
+                display_on: false,
+                scx: 0,
+                scy: 0,
+                current_line: 0,
+                lyc: 0,
+                palettes: Palettes::new(),
+                vblank_interrupt_status: false,
+                state_interrupt_status: false,
+                state_interrupt_vblank: false,
+                state_interrupt_hblank: false,
+                state_interrupt_oam: false,
+                state_interrupt_lycly_coincidence: false,
+            },
         };
         gpu.set_mode(Mode::ScanlineOam);
         gpu
@@ -97,27 +126,10 @@ impl<D> Gpu<D>
         &mut self.oam
     }
 
-    pub fn get_mode(&self) -> u8 {
-        match self.mode {
-            Mode::HorizontalBlank => 0,
-            Mode::VerticalBlank => 1,
-            Mode::ScanlineOam => 2,
-            Mode::ScanlineVram => 3,
-        }
-    }
-
-    pub fn set_display_on(&mut self, on: bool) {
-        self.display_on = on;
-    }
-
-    pub fn get_display_on(&self) -> bool {
-        self.display_on
-    }
-
     pub fn step(&mut self, cycles: u8) {
         let cycles = cycles as u32;
         self.mode_clock += cycles;
-        match self.mode {
+        match self.state.mode {
             Mode::ScanlineOam => {
                 if self.mode_clock >= SCANLINE_OAM_TIME {
                     self.mode_clock %= SCANLINE_OAM_TIME;
@@ -134,10 +146,10 @@ impl<D> Gpu<D>
             Mode::HorizontalBlank => {
                 if self.mode_clock >= HORIZONTAL_BLANK_TIME {
                     self.mode_clock %= HORIZONTAL_BLANK_TIME;
-                    if self.get_current_line() == DIM_Y - 1 {
+                    if self.state.get_current_line() == DIM_Y - 1 {
                         self.set_mode(Mode::VerticalBlank);
                         self.render_screen();
-                        self.vblank_interrupt_status = true;
+                        self.state.vblank_interrupt_status = true;
                     } else {
                         self.set_mode(Mode::ScanlineOam);
                     }
@@ -148,7 +160,7 @@ impl<D> Gpu<D>
                 if self.mode_clock >= VERTICAL_BLANK_TIME / 10 {
                     self.mode_clock %= VERTICAL_BLANK_TIME / 10;
                     self.increment_current_line();
-                    if self.get_current_line() > 153 {
+                    if self.state.get_current_line() > 153 {
                         self.set_mode(Mode::ScanlineOam);
                         self.reset_current_line();
                     }
@@ -158,20 +170,20 @@ impl<D> Gpu<D>
     }
 
     fn set_mode(&mut self, mode: Mode) {
-        self.mode = mode;
+        self.state.mode = mode;
         match mode {
             Mode::HorizontalBlank => {
-                if self.state_interrupt_hblank {
+                if self.state.state_interrupt_hblank {
                     self.fire_lcdc_interrupt();
                 }
             }
             Mode::VerticalBlank => {
-                if self.state_interrupt_vblank {
+                if self.state.state_interrupt_vblank {
                     self.fire_lcdc_interrupt();
                 }
             }
             Mode::ScanlineOam => {
-                if self.state_interrupt_oam {
+                if self.state.state_interrupt_oam {
                     self.fire_lcdc_interrupt();
                 }
             }
@@ -180,12 +192,12 @@ impl<D> Gpu<D>
     }
 
     fn fire_lcdc_interrupt(&mut self) {
-        self.state_interrupt_status = true;
+        self.state.state_interrupt_status = true;
     }
 
     fn render_scanline(&mut self) {
-        if !self.display_on { return; }
-        let display_line_number = self.get_current_line();
+        if !self.state.display_on { return; }
+        let display_line_number = self.state.get_current_line();
         let bg_pixels = self.render_bg_line(display_line_number);
         let sprite_pixels = self.render_sprites(display_line_number);
         let pixels = self.combine_pixels(bg_pixels, sprite_pixels);
@@ -194,13 +206,13 @@ impl<D> Gpu<D>
 
     fn render_bg_line(&self, display_line_number: u8) -> [u8; COLS] {
         let mut pixels = [0; COLS];
-        if !self.bg_on { return pixels; }
+        if !self.state.bg_on { return pixels; }
 
-        let x = self.scx;
-        let y = display_line_number.wrapping_add(self.scy);
-        let mut tile_iter = TileIterator::new(x, y, self.bg_tile_map, &self.vram);
+        let x = self.state.scx;
+        let y = display_line_number.wrapping_add(self.state.scy);
+        let mut tile_iter = TileIterator::new(x, y, self.state.bg_tile_map, &self.vram);
         for i in 0..DIM_X {
-            pixels[i] = tile_iter.get_pixel_color(self.bg_tile_set);
+            pixels[i] = tile_iter.get_pixel_color(self.state.bg_tile_set);
             tile_iter.next();
         }
         pixels
@@ -208,7 +220,7 @@ impl<D> Gpu<D>
 
     fn render_sprites(&self, display_line_number: u8) -> [SpritePixel; COLS] {
         let mut pixels = [SpritePixel { pixel: None, palette: None, priority: false }; COLS];
-        if !self.sprites_on { return pixels; }
+        if !self.state.sprites_on { return pixels; }
         let y = display_line_number as u16 + 16;
         let x = 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam);
@@ -244,11 +256,11 @@ impl<D> Gpu<D>
             .enumerate()
         {
             combined[i] = if *bg != 0 && !sprite.priority {
-                apply_palette(*bg, Palette::BackgroundPalette, &self.palettes)
+                apply_palette(*bg, Palette::BackgroundPalette, &self.state.palettes)
             } else if let Some(color) = sprite.pixel {
-                apply_palette(color, sprite.palette.unwrap(), &self.palettes)
+                apply_palette(color, sprite.palette.unwrap(), &self.state.palettes)
             } else {
-                apply_palette(*bg, Palette::BackgroundPalette, &self.palettes)
+                apply_palette(*bg, Palette::BackgroundPalette, &self.state.palettes)
             }
         }
         combined
@@ -259,22 +271,18 @@ impl<D> Gpu<D>
     }
 
     fn increment_current_line(&mut self) -> u8 {
-        self.current_line += 1;
+        self.state.current_line += 1;
         self.check_fire_coincidence_interrupt();
-        self.current_line
-    }
-
-    pub fn get_current_line(&self) -> u8 {
-        self.current_line
+        self.state.current_line
     }
 
     fn reset_current_line(&mut self) {
-        self.current_line = 0;
+        self.state.current_line = 0;
         self.check_fire_coincidence_interrupt();
     }
 
     fn check_fire_coincidence_interrupt(&mut self) {
-        if self.state_interrupt_lycly_coincidence && self.lyc == self.current_line {
+        if self.state.state_interrupt_lycly_coincidence && self.state.lyc == self.state.current_line {
             self.fire_lcdc_interrupt();
         }
     }
