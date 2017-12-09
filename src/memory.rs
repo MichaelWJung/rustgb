@@ -160,6 +160,16 @@ impl BlockMemory {
         file.read_to_end(&mut memory).unwrap();
         BlockMemory { memory, read_only: true }
     }
+
+    pub fn read_byte_usize(&self, address: usize) -> u8 {
+        self.memory[address]
+    }
+
+    pub fn write_byte_usize(&mut self, address: usize, value: u8) {
+        if !self.read_only {
+            self.memory[address] = value
+        }
+    }
 }
 
 impl Memory for BlockMemory {

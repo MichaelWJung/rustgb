@@ -59,13 +59,13 @@ impl Memory for Mbc1 {
         match address {
             0x0000 ... 0x3FFF => self.rom.read_byte(address),
             0x4000 ... 0x7FFF => {
-                let address = (address & 0x3FFF) + self.current_rom_bank as u16 * 0x4000;
-                self.rom.read_byte(address)
+                let address = (address & 0x3FFF) as usize + self.current_rom_bank as usize * 0x4000;
+                self.rom.read_byte_usize(address)
             }
             0xA000 ... 0xBFFF => {
                 if self.ram_enabled {
-                    let address = (address & 0x1FFF) + self.current_ram_bank as u16 * 0x2000;
-                    self.ram.read_byte(address)
+                    let address = (address & 0x1FFF) as usize + self.current_ram_bank as usize * 0x2000;
+                    self.ram.read_byte_usize(address)
                 } else {
                     0xFF
                 }
@@ -153,13 +153,13 @@ impl Memory for Mbc5 {
         match address {
             0x0000 ... 0x3FFF => self.rom.read_byte(address),
             0x4000 ... 0x7FFF => {
-                let address = (address & 0x3FFF) + self.current_rom_bank as u16 * 0x4000;
-                self.rom.read_byte(address)
+                let address = (address & 0x3FFF) as usize + self.current_rom_bank as usize * 0x4000;
+                self.rom.read_byte_usize(address)
             }
             0xA000 ... 0xBFFF => {
                 if self.ram_enabled {
-                    let address = (address & 0x1FFF) + self.current_ram_bank as u16 * 0x2000;
-                    self.ram.read_byte(address)
+                    let address = (address & 0x1FFF) as usize + self.current_ram_bank as usize * 0x2000;
+                    self.ram.read_byte_usize(address)
                 } else {
                     0xFF
                 }
@@ -186,8 +186,8 @@ impl Memory for Mbc5 {
             }
             0xA000 ... 0xBFFF => {
                 if self.ram_enabled {
-                    let address = (address & 0x1FFF) + self.current_ram_bank as u16 * 0x2000;
-                    self.ram.write_byte(address, value);
+                    let address = (address & 0x1FFF) as usize + self.current_ram_bank as usize * 0x2000;
+                    self.ram.write_byte_usize(address, value);
                 }
             }
             //_ => panic!("Mbc5 cannot handle write to address {:#X}.", address)
