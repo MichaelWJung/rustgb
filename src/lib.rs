@@ -46,7 +46,7 @@ pub fn run(file: &mut File) {
     let memory_map = memory::MemoryMap::new(&mut bios, &gpu, mbc, &io);
     let mut cpu = cpu::Cpu::new(memory_map);
 
-    let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME;
+    let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME as u64;
     let mut frame_start = time::Instant::now();
     let frame_length = time::Duration::new(0, FRAME_LENGTH_IN_NS);
     loop {
@@ -65,7 +65,7 @@ pub fn run(file: &mut File) {
                 let interrupts_fired = io.borrow().read_byte(0x0F);
                 io.borrow_mut().write_byte(0x0F, interrupts_fired | 0b0001_0000);
             }
-            next_frame += gpu::CLOCK_TICKS_PER_FRAME;
+            next_frame += gpu::CLOCK_TICKS_PER_FRAME as u64;
             let duration = frame_start.elapsed();
             if frame_length > duration {
                 thread::sleep(frame_length - duration);

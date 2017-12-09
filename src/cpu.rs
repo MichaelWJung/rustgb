@@ -9,7 +9,7 @@ pub struct Cpu<M>
 {
     registers: Registers,
     memory: M,
-    clock: u32,
+    clock: u64,
 }
 
 impl<M> Cpu<M>
@@ -23,7 +23,7 @@ impl<M> Cpu<M>
         }
     }
 
-    pub fn get_clock(&self) -> u32 {
+    pub fn get_clock(&self) -> u64 {
         self.clock
     }
 
@@ -37,7 +37,7 @@ impl<M> Cpu<M>
             let opcode = self.fetch_opcode();
             self.execute_opcode(opcode);
         }
-        self.clock += self.registers.cycles_of_last_command as u32;
+        self.clock = self.clock.wrapping_add(self.registers.cycles_of_last_command as u64);
         let mut cycles = self.registers.cycles_of_last_command;
         cycles += self.handle_interrupts();
         cycles
