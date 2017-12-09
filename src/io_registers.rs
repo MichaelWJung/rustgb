@@ -4,11 +4,19 @@ use memory::{BlockMemory, Memory};
 use timer::{Timer, TimerSpeed};
 use std::cell::RefCell;
 
+const OFFSET_JOYPAD: u16 = 0x00;
+const OFFSET_SERIAL_TRANSFER_CONTROL: u16 = 0x02;
 const OFFSET_DIVIDER_REGISTER: u16 = 0x04;
 const OFFSET_TIMER_COUNTER: u16 = 0x05;
 const OFFSET_TIMER_MODULO: u16 = 0x06;
 const OFFSET_TIMER_CONTROL: u16 = 0x07;
 const OFFSET_INTERRUPT_FLAGS: u16 = 0x0F;
+const OFFSET_CHANNEL_1_SWEEP_REGISTER: u16 = 0x10;
+const OFFSET_CHANNEL_3_SOUND_ON_OFF: u16 = 0x1A;
+const OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL: u16 = 0x1C;
+const OFFSET_CHANNEL_4_SOUND_LENGTH: u16 = 0x20;
+const OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL: u16 = 0x23;
+const OFFSET_SOUND_ON_OFF: u16 = 0x26;
 const OFFSET_LCD_CONTROL: u16 = 0x40;
 const OFFSET_LCDC_STATUS: u16 = 0x41;
 const OFFSET_SCY: u16 = 0x42;
@@ -45,6 +53,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
     fn read_byte(&self, address: u16) -> u8 {
         let old_io = self.old_io.read_byte(address);
         match address {
+            OFFSET_JOYPAD => old_io | 0b1100_0000, // bits 6 and 7 unused
+            OFFSET_SERIAL_TRANSFER_CONTROL => old_io | 0b0111_1110, // bits 1-6 unused
             OFFSET_DIVIDER_REGISTER => self.timer.borrow().get_divider(),
             OFFSET_TIMER_COUNTER => self.timer.borrow().timer_counter,
             OFFSET_TIMER_MODULO => self.timer.borrow().timer_modulo,
@@ -52,7 +62,7 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let timer = self.timer.borrow();
                 let timer_speed = timer.timer_speed.to_u8();
                 let timer_enabled = (timer.timer_enabled as u8) << 2;
-                timer_speed | timer_enabled
+                timer_speed | timer_enabled | 0b1111_1000 // bits 3-7 unused
             }
             OFFSET_INTERRUPT_FLAGS => {
                 let gpu = self.gpu.borrow();
@@ -60,8 +70,17 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let vblank_interrupt = state.vblank_interrupt_status as u8;
                 let state_interrupt = (state.state_interrupt_status as u8) << 1;
                 let timer_interrupt = (self.timer.borrow().timer_interrupt as u8) << 2;
-                old_io & 0b1111_1000 | vblank_interrupt | state_interrupt | timer_interrupt
+                old_io & 0b0001_1000 | vblank_interrupt
+                                     | state_interrupt
+                                     | timer_interrupt
+                                     | 0b1110_0000 // bits 5-7 unused
             }
+            OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
+            OFFSET_CHANNEL_3_SOUND_ON_OFF => old_io | 0b0111_1111, // bits 0-6 unused
+            OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => old_io | 0b1001_1111, // bits 0-4,7 unused
+            OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
+            OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => old_io | 0b0011_1111, // bits 0-5 unused
+            OFFSET_SOUND_ON_OFF => old_io | 0b0111_0000, // buts 4-6 unused
             OFFSET_LCD_CONTROL => {
                 let gpu = self.gpu.borrow();
                 let state = &gpu.state;
@@ -84,11 +103,12 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let vblank_interrupt = (state.state_interrupt_vblank as u8) << 4;
                 let oam_interrupt = (state.state_interrupt_oam as u8) << 5;
                 let lycly_coincidence_interrupt = (state.state_interrupt_lycly_coincidence as u8) << 6;
-                old_io & 0b1000_0100 | mode_flag
+                old_io & 0b0000_0100 | mode_flag
                                      | hblank_interrupt
                                      | vblank_interrupt
                                      | oam_interrupt
                                      | lycly_coincidence_interrupt
+                                     | 0b1000_0000 // bit 7 unused
             }
             OFFSET_SCY => self.gpu.borrow().state.scy,
             OFFSET_SCX => self.gpu.borrow().state.scx,
@@ -97,6 +117,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
             OFFSET_BACKGROUND_PALETTE => self.gpu.borrow().state.palettes.bg,
             OFFSET_OBJECT0_PALETTE => self.gpu.borrow().state.palettes.obj0,
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow().state.palettes.obj1,
+            // Completely unused bytes
+            0x03 | 0x08 | 0x09 | 0x0A | 0x0B | 0x0C | 0x0D | 0x0E | 0x15 | 0x1F
+                 | 0x27 | 0x28 | 0x29 | 0x4C ... 0x7F => 0xFF,
             _ => old_io,
         }
     }
