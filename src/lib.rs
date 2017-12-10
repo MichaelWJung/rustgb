@@ -31,9 +31,6 @@ pub fn run(file: &mut File) {
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut keyboard = keyboard::Keyboard::new(&mut event_pump);
 
-    //let mut memory = memory::BlockMemory::new();
-    //memory.load_rom(file);
-
     let path = Path::new(BIOS_PATH);
     let mut bios = File::open(path).expect(&format!("Error opening file: {}", BIOS_PATH));
 
