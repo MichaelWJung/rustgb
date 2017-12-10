@@ -221,12 +221,13 @@ impl<D> Gpu<D>
     fn render_sprites(&self, display_line_number: u8) -> [SpritePixel; COLS] {
         let mut pixels = [SpritePixel { pixel: None, palette: None, priority: false }; COLS];
         if !self.state.sprites_on { return pixels; }
+        let sprite_y_size = if self.state.large_sprites { 16 } else { 8 };
         let y = display_line_number as u16 + 16;
         let x = 8;
-        let sprites = get_sprite_attributes_from_oam(&self.oam);
+        let sprites = get_sprite_attributes_from_oam(&self.oam, self.state.large_sprites);
         for sprite in sprites.iter().rev() {
             let y_in_tile = y as i16 - sprite.get_y_pos() as i16;
-            if y_in_tile < 0 || y_in_tile >= 8 { continue; }
+            if y_in_tile < 0 || y_in_tile >= sprite_y_size { continue; }
             for i in 0..DIM_X {
                 let x = i as u16 + x;
                 let x_in_tile = x as i16 - sprite.get_x_pos() as i16;

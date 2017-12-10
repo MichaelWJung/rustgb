@@ -8,7 +8,7 @@ pub struct Tile {
     tile_set: TileSet,
     x_flip: bool,
     y_flip: bool,
-    _large_tile: bool,
+    large_tile: bool,
 }
 
 impl Tile {
@@ -18,7 +18,7 @@ impl Tile {
             tile_set,
             x_flip: false,
             y_flip: false,
-            _large_tile: false,
+            large_tile: false,
         }
     }
 
@@ -28,13 +28,21 @@ impl Tile {
             tile_set: TileSet::Set1,
             x_flip: sprite.has_x_flip(),
             y_flip: sprite.has_y_flip(),
-            _large_tile: false,
+            large_tile: sprite.is_large_sprite(),
         }
     }
 
     pub fn get_color(&self, x: u8, y: u8, vram: &Vram) -> u8 {
         let x = if self.x_flip { 7 - x } else { x };
-        let y = if self.y_flip { 7 - y } else { y };
+        let y = if self.y_flip {
+            if self.large_tile {
+                15 - y
+            } else {
+                7 - y
+            }
+        } else {
+            y
+        };
         let tile_row = vram.get_tile_row(self.tile_set, self.tile_num, y);
         tile_row.get_pixel(x)
     }
