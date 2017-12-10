@@ -238,12 +238,14 @@ impl<D> Gpu<D>
                     y_in_tile as u8,
                     &self.vram,
                 );
-                let pixel = SpritePixel {
-                    pixel: if color != 0 { Some(color) } else { None },
-                    palette: Some(sprite.get_palette()),
-                    priority: sprite.has_priority(),
-                };
-                pixels[i] = pixel;
+                if color != 0 || pixels[i].pixel == None {
+                    let pixel = SpritePixel {
+                        pixel: if color != 0 { Some(color) } else { None },
+                        palette: Some(sprite.get_palette()),
+                        priority: sprite.has_priority(),
+                    };
+                    pixels[i] = pixel;
+                }
             }
         }
         pixels
