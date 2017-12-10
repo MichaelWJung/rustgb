@@ -225,10 +225,17 @@ impl<D> Gpu<D>
         let y = display_line_number as u16 + 16;
         let x = 8;
         let sprites = get_sprite_attributes_from_oam(&self.oam, self.state.large_sprites);
-        for sprite in sprites.iter().rev() {
+        let mut sprites: Vec<_> = sprites.iter().filter(|s| {
+            let y_in_tile = y as i16 - s.get_y_pos() as i16;
+            y_in_tile >= 0 && y_in_tile < sprite_y_size
+        }).take(10).collect();
+        sprites.sort_by(|a, b| { a.get_x_pos().cmp(&b.get_x_pos()) });
+        for sprite in sprites {
             let y_in_tile = y as i16 - sprite.get_y_pos() as i16;
-            if y_in_tile < 0 || y_in_tile >= sprite_y_size { continue; }
             for i in 0..DIM_X {
+                if let Some(_) = pixels[i].pixel {
+                    continue;
+                }
                 let x = i as u16 + x;
                 let x_in_tile = x as i16 - sprite.get_x_pos() as i16;
                 if x_in_tile < 0 || x_in_tile >= 8 { continue; }
@@ -238,13 +245,12 @@ impl<D> Gpu<D>
                     y_in_tile as u8,
                     &self.vram,
                 );
-                if color != 0 || pixels[i].pixel == None {
-                    let pixel = SpritePixel {
-                        pixel: if color != 0 { Some(color) } else { None },
+                if color != 0 {
+                    pixels[i] = SpritePixel {
+                        pixel: Some(color),
                         palette: Some(sprite.get_palette()),
                         priority: sprite.has_priority(),
                     };
-                    pixels[i] = pixel;
                 }
             }
         }
