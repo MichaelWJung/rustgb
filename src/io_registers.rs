@@ -1,3 +1,4 @@
+use apu::Apu;
 use display::Display;
 use gpu::{Gpu, TileMap, TileSet};
 use memory::{BlockMemory, Memory};
@@ -12,6 +13,8 @@ const OFFSET_TIMER_MODULO: u16 = 0x06;
 const OFFSET_TIMER_CONTROL: u16 = 0x07;
 const OFFSET_INTERRUPT_FLAGS: u16 = 0x0F;
 const OFFSET_CHANNEL_1_SWEEP_REGISTER: u16 = 0x10;
+const OFFSET_CHANNEL_1_FREQUENCY_LO: u16 = 0x13;
+const OFFSET_CHANNEL_1_FREQUENCY_HI: u16 = 0x14;
 const OFFSET_CHANNEL_3_SOUND_ON_OFF: u16 = 0x1A;
 const OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL: u16 = 0x1C;
 const OFFSET_CHANNEL_4_SOUND_LENGTH: u16 = 0x20;
@@ -27,27 +30,29 @@ const OFFSET_BACKGROUND_PALETTE: u16 = 0x47;
 const OFFSET_OBJECT0_PALETTE: u16 = 0x48;
 const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
 
-pub struct IoRegisters<'a, D>
-    where D: Display + 'a
+pub struct IoRegisters<'a, 'b, 'c, 'd, D>
+    where D: Display + 'c, 'b: 'a, 'd: 'c
 {
     old_io: BlockMemory,
-    gpu: &'a RefCell<Gpu<D>>,
-    timer: &'a RefCell<Timer>,
+    apu: &'a RefCell<Apu<'b>>,
+    gpu: &'c RefCell<Gpu<D>>,
+    timer: &'d RefCell<Timer>,
 }
 
-impl<'a, D> IoRegisters<'a, D>
+impl<'a, 'b, 'c, 'd, D> IoRegisters<'a, 'b, 'c, 'd, D>
     where D: Display
 {
-    pub fn new(gpu: &'a RefCell<Gpu<D>>, timer: &'a RefCell<Timer>) -> IoRegisters<'a, D> {
+    pub fn new(apu: &'a RefCell<Apu<'b>>, gpu: &'c RefCell<Gpu<D>>, timer: &'d RefCell<Timer>) -> IoRegisters<'a, 'b, 'c, 'd, D> {
         IoRegisters {
             old_io: BlockMemory::new(0x80),
+            apu,
             gpu,
             timer,
         }
     }
 }
 
-impl <'a, D> Memory for IoRegisters<'a, D>
+impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
     where D: Display
 {
     fn read_byte(&self, address: u16) -> u8 {
@@ -76,6 +81,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                                      | 0b1110_0000 // bits 5-7 unused
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().get_frequency_lo(),
+            OFFSET_CHANNEL_1_FREQUENCY_HI => old_io | (self.apu.borrow().get_frequency_hi() & 0b0000_0111),
             OFFSET_CHANNEL_3_SOUND_ON_OFF => old_io | 0b0111_1111, // bits 0-6 unused
             OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => old_io | 0b1001_1111, // bits 0-4,7 unused
             OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
@@ -142,6 +149,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 self.gpu.borrow_mut().state.state_interrupt_status = value & 2 != 0;
                 self.timer.borrow_mut().timer_interrupt = value & 4 != 0;
             }
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().set_frequency_lo(value),
+            OFFSET_CHANNEL_1_FREQUENCY_HI => self.apu.borrow_mut().set_frequency_hi(value & 0b0000_0111),
             OFFSET_LCDC_STATUS => {
                 let hblank_interrupt = value & 0b0000_1000 != 0;
                 let vblank_interrupt = value & 0b0001_0000 != 0;

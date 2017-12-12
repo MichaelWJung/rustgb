@@ -1,5 +1,7 @@
 extern crate sdl2;
 
+mod apu;
+mod audio;
 mod cpu;
 mod display;
 mod gpu;
@@ -13,6 +15,7 @@ use memory::Memory;
 
 use std::cell::RefCell;
 use std::fs::File;
+use std::ops::Deref;
 use std::path::Path;
 use std::{thread, time};
 
@@ -23,7 +26,8 @@ const FRAME_LENGTH_IN_NS: u32 = (FRAME_LENGTH_IN_S * 1e9) as u32;
 pub fn run(file: &mut File) {
     let sdl_context = sdl2::init().unwrap();
 
-    //let audio_device = audio::create_audio_device(&sdl_context);
+    let audio_device = audio::create_audio_device(&sdl_context);
+    let apu = RefCell::new(apu::Apu::new(audio_device.deref()));
 
     let mut display_context = display::SdlDisplayContext::new(&sdl_context);
     let display = display::SdlDisplay::new(&mut display_context);
@@ -39,7 +43,7 @@ pub fn run(file: &mut File) {
     let mut bios = memory::BlockMemory::new_from_file(&mut bios);
     let timer = RefCell::new(timer::Timer::new());
     let gpu = RefCell::new(gpu::Gpu::new(display));
-    let io = RefCell::new(io_registers::IoRegisters::new(&gpu, &timer));
+    let io = RefCell::new(io_registers::IoRegisters::new(&apu, &gpu, &timer));
     let memory_map = memory::MemoryMap::new(&mut bios, &gpu, mbc, &io);
     let mut cpu = cpu::Cpu::new(memory_map);
 
@@ -54,6 +58,8 @@ pub fn run(file: &mut File) {
         let mut key_register = io.borrow().read_byte(0x0);
         keyboard.update_key_register(&mut key_register);
         io.borrow_mut().write_byte(0x0, key_register);
+
+        apu.borrow_mut().step(cycles_of_last_command);
 
         let clock = cpu.get_clock();
         if clock > next_frame {
