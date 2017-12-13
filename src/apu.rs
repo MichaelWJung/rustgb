@@ -15,58 +15,195 @@ const BUFFER_PUSH_SIZE: usize = SOUND_SAMPLE_RATE_IN_HERTZ as usize /
 const PID_CONST_PROPORTIONAL_TERM: f64 = 0.0075;
 const PID_CONST_INTEGRAL_TERM: f64 = 0.0001;
 
+pub struct Channel1 {
+    frequency_timer_ticks: u32,
+    frequency_timer_tick_counts: u32,
+    frequency_hi: u8,
+    frequency_lo: u8,
+    wave_step: u8,
+    on: bool,
+    counter_on: bool,
+    counter: u8,
+    volume: u8,
+    envelope_starting_volume: u8,
+    volume_envelope_direction: bool,
+    volume_envelope_period: u8,
+}
+
+impl Channel1 {
+    fn new() -> Channel1 {
+        let frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / 200) as u32 /
+            FREQUENCY_TIMER_TICKS_PER_PERIOD;
+        Channel1 {
+            frequency_timer_ticks,
+            frequency_timer_tick_counts: frequency_timer_ticks,
+            frequency_hi: 0,
+            frequency_lo: 0,
+            wave_step: 0,
+            on: false,
+            counter_on: false,
+            counter: 0,
+            volume: 16,
+            envelope_starting_volume: 0,
+            volume_envelope_direction: false,
+            volume_envelope_period: 0,
+        }
+    }
+
+    pub fn set_frequency_hi(&mut self, frequency_hi: u8) {
+        self.frequency_hi = frequency_hi;
+        self.set_frequency();
+    }
+
+    pub fn set_frequency_lo(&mut self, frequency_lo: u8) {
+        self.frequency_lo = frequency_lo;
+        self.set_frequency();
+    }
+
+    pub fn get_frequency_hi(&self) -> u8 {
+        self.frequency_hi
+    }
+
+    pub fn get_frequency_lo(&self) -> u8 {
+        self.frequency_lo
+    }
+
+    pub fn restart_sound(&mut self) {
+        self.on = true;
+    }
+
+    pub fn set_counter_on(&mut self, value: bool) {
+        self.counter_on = value;
+        //println!("counter_on: {}", self.counter_on);
+    }
+
+    pub fn get_counter_on(&self) -> bool {
+        self.counter_on
+    }
+
+    pub fn set_counter(&mut self, value: u8) {
+        assert!(value < 64);
+        self.counter = value;
+        //println!("counter: {}", self.counter);
+    }
+
+    pub fn get_on(&self) -> bool {
+        self.on
+    }
+
+    pub fn set_envelope_starting_volume(&mut self, value: u8) {
+        assert!(value < 0x10);
+        self.envelope_starting_volume = value;
+        self.volume = value;
+        //println!("envelope_starting_volume: {}", self.envelope_starting_volume);
+    }
+
+    pub fn get_envelope_starting_volume(&self) -> u8 {
+        self.envelope_starting_volume
+    }
+
+    pub fn set_volume_envelope_direction(&mut self, direction: bool) {
+        self.volume_envelope_direction = direction;
+        //println!("volume_envelope_direction: {}", self.volume_envelope_direction);
+    }
+
+    pub fn get_volume_envelope_direction(&self) -> bool {
+        self.volume_envelope_direction
+    }
+
+    pub fn set_volume_envelope_period(&mut self, period: u8) {
+        self.volume_envelope_period = period;
+        //println!("volume_envelope_period: {}", self.volume_envelope_period);
+    }
+
+    pub fn get_volume_envelope_period(&self) -> u8 {
+        self.volume_envelope_period
+    }
+
+    fn set_frequency(&mut self) {
+        let val = ((self.frequency_hi as u16) << 8) + self.frequency_lo as u16;
+        let frequency = 131_072 / (2048 - val as u64);
+        self.frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / frequency) as u32 /
+            FREQUENCY_TIMER_TICKS_PER_PERIOD;
+    }
+
+    fn clock_tick(&mut self) {
+        assert!(self.frequency_timer_tick_counts != 0);
+        self.frequency_timer_tick_counts -= 1;
+        if self.frequency_timer_tick_counts == 0 {
+            self.frequency_timer_tick_counts = self.frequency_timer_ticks;
+            self.wave_step = (self.wave_step + 1) % FREQUENCY_TIMER_TICKS_PER_PERIOD as u8;
+        }
+    }
+
+    fn get_duty(&self) -> i16 {
+        if self.on {
+            if self.wave_step < 4 { 1 } else { -1 }
+        } else {
+            0
+        }
+    }
+
+    fn apply_volume_control(&self, sample: i16) -> i16 {
+        sample * self.volume as i16 * 8000/16
+    }
+
+    fn get_value(&self) -> i16 {
+        self.apply_volume_control(self.get_duty())
+    }
+
+    fn length_counter_tick(&mut self) {
+        if self.counter_on {
+            if self.counter > 0 {
+                self.counter -= 1;
+            }
+            if self.counter == 0 {
+                self.on = false;
+            }
+        }
+    }
+
+    fn volume_envelope_tick(&mut self) {
+        if self.volume_envelope_period != 0 {
+            self.volume_envelope_period -= 1;
+            if self.volume > 0 && !self.volume_envelope_direction {
+                self.volume -= 1;
+            }
+            if self.volume < 15 && self.volume_envelope_direction {
+                self.volume += 1;
+            }
+        }
+    }
+}
+
 pub struct Apu<'a> {
     audio_device: &'a AudioDevice,
     buffer: Vec<i16>,
     sample_clock: f64,
     frame_sequencer_clock: u64,
     frame_sequencer_clock_counts: u8,
-    frequency_timer_ticks: u32,
-    frequency_timer_tick_counts: u32,
-    wave_step: u8,
     first: bool,
     pitch: i16,
     queue_lengths: VecDeque<usize>,
     queue_diffence_integral: i32,
-    frequency_hi: u8,
-    frequency_lo: u8,
     sound_on: bool,
-    channel1_on: bool,
-    channel1_counter_on: bool,
-    channel1_counter: u8,
-    channel1_volume: u8,
-    channel1_envelope_starting_volume: u8,
-    channel1_volume_envelope_direction: bool,
-    channel1_volume_envelope_period: u8,
+    pub channel1: Channel1,
 }
 
 impl<'a> Apu<'a> {
     pub fn new(audio_device: &AudioDevice) -> Apu {
-        let frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / 200) as u32 /
-            FREQUENCY_TIMER_TICKS_PER_PERIOD;
         Apu {
             audio_device,
             buffer: Vec::new(),
             sample_clock: 0.0,
             frame_sequencer_clock: 0,
             frame_sequencer_clock_counts: 0,
-            frequency_timer_ticks,
-            frequency_timer_tick_counts: frequency_timer_ticks,
-            wave_step: 0,
             first: true,
             pitch: 0,
             queue_lengths: VecDeque::new(),
             queue_diffence_integral: 0,
-            frequency_hi: 0,
-            frequency_lo: 0,
             sound_on: false,
-            channel1_on: false,
-            channel1_counter_on: false,
-            channel1_counter: 0,
-            channel1_volume: 16,
-            channel1_envelope_starting_volume: 0,
-            channel1_volume_envelope_direction: false,
-            channel1_volume_envelope_period: 0,
+            channel1: Channel1::new(),
         }
     }
 
@@ -91,79 +228,22 @@ impl<'a> Apu<'a> {
     }
 
     fn clock_tick(&mut self) {
-        assert!(self.frequency_timer_tick_counts != 0);
-        self.frequency_timer_tick_counts -= 1;
-        if self.frequency_timer_tick_counts == 0 {
-            self.frequency_timer_tick_counts = self.frequency_timer_ticks;
-            self.wave_step = (self.wave_step + 1) % FREQUENCY_TIMER_TICKS_PER_PERIOD as u8;
-        }
-        let val = if self.channel1_on {
-            self.channel1_volume_control(self.channel1_duty())
-        } else {
-            0
-        };
+        self.channel1.clock_tick();
+        let val = self.channel1.get_value();
         self.buffer.push(val);
         if self.buffer.len() >= BUFFER_PUSH_SIZE {
             self.resample_and_push();
         }
     }
 
-    fn channel1_duty(&self) -> i16 {
-        if self.wave_step < 4 { 1 } else { -1 }
-    }
-
-    fn channel1_volume_control(&self, sample: i16) -> i16 {
-        sample * self.channel1_volume as i16 * 8000/16
-    }
-
     fn frame_sequencer_tick(&mut self) {
         self.frame_sequencer_clock_counts = (self.frame_sequencer_clock_counts + 1) % 8;
         if self.frame_sequencer_clock_counts % 2 == 0 {
-            self.length_counter_tick();
+            self.channel1.length_counter_tick();
         }
         if self.frame_sequencer_clock_counts == 7 {
-            self.volume_envelope_tick();
+            self.channel1.volume_envelope_tick();
         }
-    }
-
-    fn length_counter_tick(&mut self) {
-        if self.channel1_counter_on {
-            if self.channel1_counter > 0 {
-                self.channel1_counter -= 1;
-            }
-            if self.channel1_counter == 0 {
-                self.channel1_on = false;
-            }
-        }
-    }
-
-    fn volume_envelope_tick(&mut self) {
-        if self.channel1_volume_envelope_period != 0 {
-            self.channel1_volume_envelope_period -= 1;
-            if self.channel1_volume > 0 && !self.channel1_volume_envelope_direction {
-                self.channel1_volume -= 1;
-            }
-            if self.channel1_volume < 15 && self.channel1_volume_envelope_direction {
-                self.channel1_volume += 1;
-            }
-        }
-    }
-
-    pub fn set_frequency_hi(&mut self, frequency_hi: u8) {
-        self.frequency_hi = frequency_hi;
-        self.set_frequency();
-    }
-
-    pub fn set_frequency_lo(&mut self, frequency_lo: u8) {
-        self.frequency_lo = frequency_lo;
-    }
-
-    pub fn get_frequency_hi(&self) -> u8 {
-        self.frequency_hi
-    }
-
-    pub fn get_frequency_lo(&self) -> u8 {
-        self.frequency_lo
     }
 
     pub fn set_sound_on(&mut self, sound_on: bool) {
@@ -172,65 +252,6 @@ impl<'a> Apu<'a> {
 
     pub fn get_sound_on(&self) -> bool {
         self.sound_on
-    }
-
-    pub fn restart_channel1_sound(&mut self) {
-        self.channel1_on = true;
-    }
-
-    pub fn set_channel1_counter_on(&mut self, value: bool) {
-        self.channel1_counter_on = value;
-        println!("channel1_counter_on: {}", self.channel1_counter_on);
-    }
-
-    pub fn get_channel1_counter_on(&self) -> bool {
-        self.channel1_counter_on
-    }
-
-    pub fn set_channel1_counter(&mut self, value: u8) {
-        assert!(value < 64);
-        self.channel1_counter = value;
-        println!("channel1_counter: {}", self.channel1_counter);
-    }
-
-    pub fn get_channel1_on(&self) -> bool {
-        self.channel1_on
-    }
-
-    pub fn set_channel1_envelope_starting_volume(&mut self, value: u8) {
-        assert!(value < 0x10);
-        self.channel1_envelope_starting_volume = value;
-        self.channel1_volume = value;
-        println!("channel1_envelope_starting_volume: {}", self.channel1_envelope_starting_volume);
-    }
-
-    pub fn get_channel1_envelope_starting_volume(&self) -> u8 {
-        self.channel1_envelope_starting_volume
-    }
-
-    pub fn set_channel1_volume_envelope_direction(&mut self, direction: bool) {
-        self.channel1_volume_envelope_direction = direction;
-        println!("channel1_volume_envelope_direction: {}", self.channel1_volume_envelope_direction);
-    }
-
-    pub fn get_channel1_volume_envelope_direction(&self) -> bool {
-        self.channel1_volume_envelope_direction
-    }
-
-    pub fn set_channel1_volume_envelope_period(&mut self, period: u8) {
-        self.channel1_volume_envelope_period = period;
-        println!("channel1_volume_envelope_period: {}", self.channel1_volume_envelope_period);
-    }
-
-    pub fn get_channel1_volume_envelope_period(&self) -> u8 {
-        self.channel1_volume_envelope_period
-    }
-
-    fn set_frequency(&mut self) {
-        let val = ((self.frequency_hi as u16) << 8) + self.frequency_lo as u16;
-        let frequency = 131_072 / (2048 - val as u64);
-        self.frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / frequency) as u32 /
-            FREQUENCY_TIMER_TICKS_PER_PERIOD;
     }
 
     fn resample_and_push(&mut self) {
@@ -248,14 +269,10 @@ impl<'a> Apu<'a> {
             self.queue_lengths.pop_front();
         }
         let average = self.queue_lengths.iter().sum::<usize>() / len;
-        //println!("average: {}", average);
         let difference = TARGET_QUEUE_LENGTH_IN_SAMPLES as i32 - average as i32;
-        //println!("difference: {}", difference);
         self.queue_diffence_integral += difference;
         self.pitch = (difference as f64 * PID_CONST_PROPORTIONAL_TERM +
                       self.queue_diffence_integral as f64 * PID_CONST_INTEGRAL_TERM) as i16;
-        //println!("pitch: {}", self.pitch);
-        //println!("queue_size: {}", queue_size);
     }
 
     fn resample(&self) -> Vec<i16> {
@@ -274,15 +291,4 @@ impl<'a> Apu<'a> {
         }
         resampled
     }
-
-    //pub fn blub(&self) {
-    //    let mut v = Vec::new();
-    //    for _ in 0..256 {
-    //        v.push(32767);
-    //    }
-    //    for _ in 0..256 {
-    //        v.push(-32768);
-    //    }
-    //    self.audio_device.queue(&v);
-    //}
 }

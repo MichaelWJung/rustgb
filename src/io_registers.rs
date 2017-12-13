@@ -86,16 +86,16 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             //OFFSET_CHANNEL_1_LENGTH_DUTY => { }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
-                let starting_volume = (apu.get_channel1_envelope_starting_volume() & 0xF) << 4;
-                let envelope_direction = (apu.get_channel1_volume_envelope_direction() as u8) << 3;
-                let envelope_period = apu.get_channel1_volume_envelope_period() & 0b0000_0111;
+                let starting_volume = (apu.channel1.get_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.channel1.get_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.channel1.get_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
-            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().get_frequency_lo(),
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().channel1.get_frequency_lo(),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
-                let frequency_hi = apu.get_frequency_hi() & 0b0000_0111;
-                let counter_on = (apu.get_channel1_counter_on() as u8) << 7;
+                let frequency_hi = apu.channel1.get_frequency_hi() & 0b0000_0111;
+                let counter_on = (apu.channel1.get_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
             OFFSET_CHANNEL_3_SOUND_ON_OFF => old_io | 0b0111_1111, // bits 0-6 unused
@@ -105,7 +105,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             OFFSET_SOUND_ON_OFF => {
                 let apu = self.apu.borrow();
                 let sound_on = (apu.get_sound_on() as u8) << 7;
-                let channel1_on = apu.get_channel1_on() as u8;
+                let channel1_on = apu.channel1.get_on() as u8;
                 sound_on | channel1_on | 0b0111_0000 // buts 4-6 unused
             }
             OFFSET_LCD_CONTROL => {
@@ -171,7 +171,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             }
             OFFSET_CHANNEL_1_LENGTH_DUTY => {
                 let length = value & 0b0001_1111;
-                self.apu.borrow_mut().set_channel1_counter(length);
+                self.apu.borrow_mut().channel1.set_counter(length);
                 self.old_io.write_byte(address, value);
             }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
@@ -179,18 +179,18 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let envelope_direction = value & 0b0000_1000 != 0;
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
-                apu.set_channel1_envelope_starting_volume(starting_volume);
-                apu.set_channel1_volume_envelope_direction(envelope_direction);
-                apu.set_channel1_volume_envelope_period(envelope_period);
+                apu.channel1.set_envelope_starting_volume(starting_volume);
+                apu.channel1.set_volume_envelope_direction(envelope_direction);
+                apu.channel1.set_volume_envelope_period(envelope_period);
             }
-            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().set_frequency_lo(value),
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().channel1.set_frequency_lo(value),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let mut apu = self.apu.borrow_mut();
                 if value & 0b1000_0000 != 0 {
-                    apu.restart_channel1_sound();
+                    apu.channel1.restart_sound();
                 }
-                apu.set_channel1_counter_on(value & 0b0100_000 != 0);
-                apu.set_frequency_hi(value & 0b0000_0111);
+                apu.channel1.set_counter_on(value & 0b0100_000 != 0);
+                apu.channel1.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_SOUND_ON_OFF => {
                 self.apu.borrow_mut().set_sound_on(value & 0b1000_0000 != 0);
