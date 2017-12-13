@@ -13,6 +13,7 @@ const OFFSET_TIMER_MODULO: u16 = 0x06;
 const OFFSET_TIMER_CONTROL: u16 = 0x07;
 const OFFSET_INTERRUPT_FLAGS: u16 = 0x0F;
 const OFFSET_CHANNEL_1_SWEEP_REGISTER: u16 = 0x10;
+const OFFSET_CHANNEL_1_LENGTH_DUTY: u16 = 0x11;
 const OFFSET_CHANNEL_1_FREQUENCY_LO: u16 = 0x13;
 const OFFSET_CHANNEL_1_FREQUENCY_HI: u16 = 0x14;
 const OFFSET_CHANNEL_3_SOUND_ON_OFF: u16 = 0x1A;
@@ -81,13 +82,24 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                                      | 0b1110_0000 // bits 5-7 unused
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
+            //OFFSET_CHANNEL_1_LENGTH_DUTY => { }
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().get_frequency_lo(),
-            OFFSET_CHANNEL_1_FREQUENCY_HI => old_io | (self.apu.borrow().get_frequency_hi() & 0b0000_0111),
+            OFFSET_CHANNEL_1_FREQUENCY_HI => {
+                let apu = self.apu.borrow();
+                let frequency_hi = apu.get_frequency_hi() & 0b0000_0111;
+                let counter_on = (apu.get_channel1_counter_on() as u8) << 7;
+                frequency_hi | counter_on | 0b1011_1000
+            }
             OFFSET_CHANNEL_3_SOUND_ON_OFF => old_io | 0b0111_1111, // bits 0-6 unused
             OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => old_io | 0b1001_1111, // bits 0-4,7 unused
             OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
             OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => old_io | 0b0011_1111, // bits 0-5 unused
-            OFFSET_SOUND_ON_OFF => old_io | 0b0111_0000, // buts 4-6 unused
+            OFFSET_SOUND_ON_OFF => {
+                let apu = self.apu.borrow();
+                let sound_on = (apu.get_sound_on() as u8) << 7;
+                let channel1_on = apu.get_channel1_on() as u8;
+                sound_on | channel1_on | 0b0111_0000 // buts 4-6 unused
+            }
             OFFSET_LCD_CONTROL => {
                 let gpu = self.gpu.borrow();
                 let state = &gpu.state;
@@ -149,8 +161,23 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 self.gpu.borrow_mut().state.state_interrupt_status = value & 2 != 0;
                 self.timer.borrow_mut().timer_interrupt = value & 4 != 0;
             }
+            OFFSET_CHANNEL_1_LENGTH_DUTY => {
+                let length = value & 0b0001_1111;
+                self.apu.borrow_mut().set_channel1_counter(length);
+                self.old_io.write_byte(address, value);
+            }
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().set_frequency_lo(value),
-            OFFSET_CHANNEL_1_FREQUENCY_HI => self.apu.borrow_mut().set_frequency_hi(value & 0b0000_0111),
+            OFFSET_CHANNEL_1_FREQUENCY_HI => {
+                let mut apu = self.apu.borrow_mut();
+                if value & 0b1000_0000 != 0 {
+                    apu.restart_channel1_sound();
+                }
+                apu.set_channel1_counter_on(value & 0b0100_000 != 0);
+                apu.set_frequency_hi(value & 0b0000_0111);
+            }
+            OFFSET_SOUND_ON_OFF => {
+                self.apu.borrow_mut().set_sound_on(value & 0b1000_0000 != 0);
+            }
             OFFSET_LCDC_STATUS => {
                 let hblank_interrupt = value & 0b0000_1000 != 0;
                 let vblank_interrupt = value & 0b0001_0000 != 0;
