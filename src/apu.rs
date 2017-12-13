@@ -34,6 +34,10 @@ pub struct Apu<'a> {
     channel1_on: bool,
     channel1_counter_on: bool,
     channel1_counter: u8,
+    channel1_volume: u8,
+    channel1_envelope_starting_volume: u8,
+    channel1_volume_envelope_direction: bool,
+    channel1_volume_envelope_period: u8,
 }
 
 impl<'a> Apu<'a> {
@@ -59,6 +63,10 @@ impl<'a> Apu<'a> {
             channel1_on: false,
             channel1_counter_on: false,
             channel1_counter: 0,
+            channel1_volume: 16,
+            channel1_envelope_starting_volume: 0,
+            channel1_volume_envelope_direction: false,
+            channel1_volume_envelope_period: 0,
         }
     }
 
@@ -90,7 +98,7 @@ impl<'a> Apu<'a> {
             self.wave_step = (self.wave_step + 1) % FREQUENCY_TIMER_TICKS_PER_PERIOD as u8;
         }
         let val = if self.channel1_on {
-            if self.wave_step < 4 { 8000 } else { -8000 }
+            self.channel1_volume_control(self.channel1_duty())
         } else {
             0
         };
@@ -100,10 +108,21 @@ impl<'a> Apu<'a> {
         }
     }
 
+    fn channel1_duty(&self) -> i16 {
+        if self.wave_step < 4 { 1 } else { -1 }
+    }
+
+    fn channel1_volume_control(&self, sample: i16) -> i16 {
+        sample * self.channel1_volume as i16 * 8000/16
+    }
+
     fn frame_sequencer_tick(&mut self) {
         self.frame_sequencer_clock_counts = (self.frame_sequencer_clock_counts + 1) % 8;
         if self.frame_sequencer_clock_counts % 2 == 0 {
             self.length_counter_tick();
+        }
+        if self.frame_sequencer_clock_counts == 7 {
+            self.volume_envelope_tick();
         }
     }
 
@@ -114,6 +133,18 @@ impl<'a> Apu<'a> {
             }
             if self.channel1_counter == 0 {
                 self.channel1_on = false;
+            }
+        }
+    }
+
+    fn volume_envelope_tick(&mut self) {
+        if self.channel1_volume_envelope_period != 0 {
+            self.channel1_volume_envelope_period -= 1;
+            if self.channel1_volume > 0 && !self.channel1_volume_envelope_direction {
+                self.channel1_volume -= 1;
+            }
+            if self.channel1_volume < 15 && self.channel1_volume_envelope_direction {
+                self.channel1_volume += 1;
             }
         }
     }
@@ -149,7 +180,7 @@ impl<'a> Apu<'a> {
 
     pub fn set_channel1_counter_on(&mut self, value: bool) {
         self.channel1_counter_on = value;
-        //println!("channel1_counter_on: {}", self.channel1_counter_on);
+        println!("channel1_counter_on: {}", self.channel1_counter_on);
     }
 
     pub fn get_channel1_counter_on(&self) -> bool {
@@ -159,11 +190,40 @@ impl<'a> Apu<'a> {
     pub fn set_channel1_counter(&mut self, value: u8) {
         assert!(value < 64);
         self.channel1_counter = value;
-        //println!("channel1_counter: {}", self.channel1_counter);
+        println!("channel1_counter: {}", self.channel1_counter);
     }
 
     pub fn get_channel1_on(&self) -> bool {
         self.channel1_on
+    }
+
+    pub fn set_channel1_envelope_starting_volume(&mut self, value: u8) {
+        assert!(value < 0x10);
+        self.channel1_envelope_starting_volume = value;
+        self.channel1_volume = value;
+        println!("channel1_envelope_starting_volume: {}", self.channel1_envelope_starting_volume);
+    }
+
+    pub fn get_channel1_envelope_starting_volume(&self) -> u8 {
+        self.channel1_envelope_starting_volume
+    }
+
+    pub fn set_channel1_volume_envelope_direction(&mut self, direction: bool) {
+        self.channel1_volume_envelope_direction = direction;
+        println!("channel1_volume_envelope_direction: {}", self.channel1_volume_envelope_direction);
+    }
+
+    pub fn get_channel1_volume_envelope_direction(&self) -> bool {
+        self.channel1_volume_envelope_direction
+    }
+
+    pub fn set_channel1_volume_envelope_period(&mut self, period: u8) {
+        self.channel1_volume_envelope_period = period;
+        println!("channel1_volume_envelope_period: {}", self.channel1_volume_envelope_period);
+    }
+
+    pub fn get_channel1_volume_envelope_period(&self) -> u8 {
+        self.channel1_volume_envelope_period
     }
 
     fn set_frequency(&mut self) {

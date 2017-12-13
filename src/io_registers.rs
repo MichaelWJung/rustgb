@@ -14,6 +14,7 @@ const OFFSET_TIMER_CONTROL: u16 = 0x07;
 const OFFSET_INTERRUPT_FLAGS: u16 = 0x0F;
 const OFFSET_CHANNEL_1_SWEEP_REGISTER: u16 = 0x10;
 const OFFSET_CHANNEL_1_LENGTH_DUTY: u16 = 0x11;
+const OFFSET_CHANNEL_1_VOLUME_ENVELOPE: u16 = 0x12;
 const OFFSET_CHANNEL_1_FREQUENCY_LO: u16 = 0x13;
 const OFFSET_CHANNEL_1_FREQUENCY_HI: u16 = 0x14;
 const OFFSET_CHANNEL_3_SOUND_ON_OFF: u16 = 0x1A;
@@ -83,6 +84,13 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
             //OFFSET_CHANNEL_1_LENGTH_DUTY => { }
+            OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
+                let apu = self.apu.borrow();
+                let starting_volume = (apu.get_channel1_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.get_channel1_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.get_channel1_volume_envelope_period() & 0b0000_0111;
+                starting_volume | envelope_direction | envelope_period
+            }
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().get_frequency_lo(),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
@@ -165,6 +173,15 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let length = value & 0b0001_1111;
                 self.apu.borrow_mut().set_channel1_counter(length);
                 self.old_io.write_byte(address, value);
+            }
+            OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
+                let starting_volume = (value & 0b1111_0000) >> 4;
+                let envelope_direction = value & 0b0000_1000 != 0;
+                let envelope_period = value & 0b0000_0111;
+                let mut apu = self.apu.borrow_mut();
+                apu.set_channel1_envelope_starting_volume(starting_volume);
+                apu.set_channel1_volume_envelope_direction(envelope_direction);
+                apu.set_channel1_volume_envelope_period(envelope_period);
             }
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().set_frequency_lo(value),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
