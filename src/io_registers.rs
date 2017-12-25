@@ -87,7 +87,10 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                                      | 0b1110_0000 // bits 5-7 unused
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
-            //OFFSET_CHANNEL_1_LENGTH_DUTY => { }
+            OFFSET_CHANNEL_1_LENGTH_DUTY => {
+                let duty = self.apu.borrow().channel1.get_duty() << 6;
+                duty | 0b0011_1111
+            }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
                 let starting_volume = (apu.channel1.get_envelope_starting_volume() & 0xF) << 4;
@@ -101,6 +104,10 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let frequency_hi = apu.channel1.get_frequency_hi() & 0b0000_0111;
                 let counter_on = (apu.channel1.get_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
+            }
+            OFFSET_CHANNEL_2_LENGTH_DUTY => {
+                let duty = self.apu.borrow().channel2.get_duty() << 6;
+                duty | 0b0011_1111
             }
             OFFSET_CHANNEL_2_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
@@ -188,9 +195,11 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 self.timer.borrow_mut().timer_interrupt = value & 4 != 0;
             }
             OFFSET_CHANNEL_1_LENGTH_DUTY => {
-                let length = value & 0b0001_1111;
-                self.apu.borrow_mut().channel1.set_counter(length);
-                self.old_io.write_byte(address, value);
+                let length = value & 0b0011_1111;
+                let duty = (value & 0b1100_0000) >> 6;
+                let mut apu = self.apu.borrow_mut();
+                apu.channel1.set_counter(64 - length);
+                apu.channel1.set_duty(duty);
             }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
                 let starting_volume = (value & 0b1111_0000) >> 4;
@@ -211,9 +220,11 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 apu.channel1.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_2_LENGTH_DUTY => {
-                let length = value & 0b0001_1111;
-                self.apu.borrow_mut().channel2.set_counter(length);
-                self.old_io.write_byte(address, value);
+                let length = value & 0b0011_1111;
+                let duty = (value & 0b1100_0000) >> 6;
+                let mut apu = self.apu.borrow_mut();
+                apu.channel2.set_counter(64 - length);
+                apu.channel2.set_duty(duty);
             }
             OFFSET_CHANNEL_2_VOLUME_ENVELOPE => {
                 let starting_volume = (value & 0b1111_0000) >> 4;

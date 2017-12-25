@@ -20,6 +20,7 @@ pub struct Channel {
     frequency_timer_tick_counts: u32,
     frequency_hi: u8,
     frequency_lo: u8,
+    duty: u8,
     wave_step: u8,
     on: bool,
     counter_on: bool,
@@ -39,6 +40,7 @@ impl Channel {
             frequency_timer_tick_counts: frequency_timer_ticks,
             frequency_hi: 0,
             frequency_lo: 0,
+            duty: 2,
             wave_step: 0,
             on: false,
             counter_on: false,
@@ -48,6 +50,14 @@ impl Channel {
             volume_envelope_direction: false,
             volume_envelope_period: 0,
         }
+    }
+
+    pub fn set_duty(&mut self, duty: u8) {
+        self.duty = duty;
+    }
+
+    pub fn get_duty(&self) -> u8 {
+        self.duty
     }
 
     pub fn set_frequency_hi(&mut self, frequency_hi: u8) {
@@ -136,9 +146,15 @@ impl Channel {
         }
     }
 
-    fn get_duty(&self) -> i16 {
+    fn get_output(&self) -> i16 {
         if self.on {
-            if self.wave_step < 4 { 1 } else { -1 }
+            match self.duty {
+                0 => if self.wave_step == 7 { 1 } else { -1 },
+                1 => if self.wave_step == 0 || self.wave_step == 7 { 1 } else { -1 },
+                2 => if self.wave_step < 4 { 1 } else { -1 },
+                3 => if self.wave_step == 0 || self.wave_step == 7 { -1 } else { 1 },
+                _ => panic!("Invalid duty cycle"),
+            }
         } else {
             0
         }
@@ -149,7 +165,7 @@ impl Channel {
     }
 
     fn get_value(&self) -> i16 {
-        self.apply_volume_control(self.get_duty())
+        self.apply_volume_control(self.get_output())
     }
 
     fn length_counter_tick(&mut self) {
