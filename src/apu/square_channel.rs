@@ -21,8 +21,7 @@ pub struct SquareChannel {
 impl SquareChannel {
     pub fn new() -> SquareChannel {
         // Default: 200 Hz
-        let frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / 200) as u32 /
-            FREQUENCY_TIMER_TICKS_PER_PERIOD;
+        let frequency_timer_ticks = Self::calc_num_timer_ticks_for_frequency(200);
         SquareChannel {
             frequency_timer_ticks,
             frequency_timer_tick_counts: frequency_timer_ticks,
@@ -119,8 +118,12 @@ impl SquareChannel {
     fn set_frequency(&mut self) {
         let val = ((self.frequency_hi as u16) << 8) + self.frequency_lo as u16;
         let frequency = 131_072 / (2048 - val as u64);
-        self.frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / frequency) as u32 /
-            FREQUENCY_TIMER_TICKS_PER_PERIOD;
+        self.frequency_timer_ticks = Self::calc_num_timer_ticks_for_frequency(frequency);
+    }
+
+    fn calc_num_timer_ticks_for_frequency(frequency: u64) -> u32 {
+        (SOUND_SAMPLE_RATE_IN_HERTZ / frequency) as u32 /
+            FREQUENCY_TIMER_TICKS_PER_PERIOD
     }
 
     pub fn clock_tick(&mut self) {
