@@ -30,6 +30,7 @@ pub struct Channel {
     envelope_starting_volume: u8,
     volume_envelope_direction: bool,
     volume_envelope_period: u8,
+    volume_envelope_tick_counts: u8,
 }
 
 impl Channel {
@@ -47,10 +48,11 @@ impl Channel {
             on: false,
             counter_on: false,
             counter: 0,
-            volume: 16,
+            volume: 15,
             envelope_starting_volume: 0,
             volume_envelope_direction: false,
             volume_envelope_period: 0,
+            volume_envelope_tick_counts: 0,
         }
     }
 
@@ -94,8 +96,9 @@ impl Channel {
     }
 
     pub fn set_counter(&mut self, value: u8) {
-        assert!(value < 64);
-        self.counter = value;
+        assert!(value <= 64);
+        assert!(value > 0);
+        self.counter = (value - 1) * 4;
         //if self.id == 1 { println!("set counter: {}", self.counter); }
     }
 
@@ -125,6 +128,7 @@ impl Channel {
 
     pub fn set_volume_envelope_period(&mut self, period: u8) {
         self.volume_envelope_period = period;
+        self.volume_envelope_tick_counts = period;
         //if self.id == 1 { println!("set volume_envelope_period: {}", self.volume_envelope_period); }
     }
 
@@ -164,7 +168,7 @@ impl Channel {
     }
 
     fn apply_volume_control(&self, sample: i16) -> i16 {
-        sample * self.volume as i16 * 8000/16
+        sample * self.volume as i16 * (8000/15)
     }
 
     fn get_value(&self) -> i16 {
@@ -177,20 +181,25 @@ impl Channel {
                 self.counter -= 1;
             }
             if self.counter == 0 {
+                self.counter_on == false;
                 self.on = false;
             }
         }
     }
 
     fn volume_envelope_tick(&mut self) {
-        if self.volume_envelope_period != 0 {
-            self.volume_envelope_period -= 1;
         //if self.id == 1 {
             //println!("volume_envelope_period: {}", self.volume_envelope_period);
             //println!("volume_envelope_tick_counts: {}", self.volume_envelope_tick_counts);
             //println!("volume_envelope_direction: {}", self.volume_envelope_direction);
             //println!("volume: {}", self.volume);
         //}
+        if !self.on || self.volume_envelope_period == 0 { return; }
+        if self.volume_envelope_tick_counts > 0 {
+            self.volume_envelope_tick_counts -= 1;
+        }
+        if self.volume_envelope_tick_counts == 0 {
+            self.volume_envelope_tick_counts = self.volume_envelope_period;
             if self.volume > 0 && !self.volume_envelope_direction {
                 self.volume -= 1;
             }

@@ -216,7 +216,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 if value & 0b1000_0000 != 0 {
                     apu.channel1.restart_sound();
                 }
-                apu.channel1.set_counter_on(value & 0b0100_000 != 0);
+                apu.channel1.set_counter_on(value & 0b1000_0000 != 0);
                 apu.channel1.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_2_LENGTH_DUTY => {
@@ -241,7 +241,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 if value & 0b1000_0000 != 0 {
                     apu.channel2.restart_sound();
                 }
-                apu.channel2.set_counter_on(value & 0b0100_000 != 0);
+                apu.channel2.set_counter_on(value & 0b1000_0000 != 0);
                 apu.channel2.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_SOUND_ON_OFF => {
