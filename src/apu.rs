@@ -16,6 +16,7 @@ const PID_CONST_PROPORTIONAL_TERM: f64 = 0.0075;
 const PID_CONST_INTEGRAL_TERM: f64 = 0.0001;
 
 pub struct Channel {
+    id: u8,
     frequency_timer_ticks: u32,
     frequency_timer_tick_counts: u32,
     frequency_hi: u8,
@@ -32,10 +33,11 @@ pub struct Channel {
 }
 
 impl Channel {
-    fn new() -> Channel {
+    fn new(id: u8) -> Channel {
         let frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / 200) as u32 /
             FREQUENCY_TIMER_TICKS_PER_PERIOD;
         Channel {
+            id,
             frequency_timer_ticks,
             frequency_timer_tick_counts: frequency_timer_ticks,
             frequency_hi: 0,
@@ -84,7 +86,7 @@ impl Channel {
 
     pub fn set_counter_on(&mut self, value: bool) {
         self.counter_on = value;
-        //println!("counter_on: {}", self.counter_on);
+        //if self.id == 1 { println!("set counter_on: {}", self.counter_on); }
     }
 
     pub fn get_counter_on(&self) -> bool {
@@ -94,7 +96,7 @@ impl Channel {
     pub fn set_counter(&mut self, value: u8) {
         assert!(value < 64);
         self.counter = value;
-        //println!("counter: {}", self.counter);
+        //if self.id == 1 { println!("set counter: {}", self.counter); }
     }
 
     pub fn get_on(&self) -> bool {
@@ -105,7 +107,7 @@ impl Channel {
         assert!(value < 0x10);
         self.envelope_starting_volume = value;
         self.volume = value;
-        //println!("envelope_starting_volume: {}", self.envelope_starting_volume);
+        //if self.id == 1 { println!("set envelope_starting_volume: {}", self.envelope_starting_volume); }
     }
 
     pub fn get_envelope_starting_volume(&self) -> u8 {
@@ -114,7 +116,7 @@ impl Channel {
 
     pub fn set_volume_envelope_direction(&mut self, direction: bool) {
         self.volume_envelope_direction = direction;
-        //println!("volume_envelope_direction: {}", self.volume_envelope_direction);
+        //if self.id == 1 { println!("set volume_envelope_direction: {}", self.volume_envelope_direction); }
     }
 
     pub fn get_volume_envelope_direction(&self) -> bool {
@@ -123,7 +125,7 @@ impl Channel {
 
     pub fn set_volume_envelope_period(&mut self, period: u8) {
         self.volume_envelope_period = period;
-        //println!("volume_envelope_period: {}", self.volume_envelope_period);
+        //if self.id == 1 { println!("set volume_envelope_period: {}", self.volume_envelope_period); }
     }
 
     pub fn get_volume_envelope_period(&self) -> u8 {
@@ -133,6 +135,7 @@ impl Channel {
     fn set_frequency(&mut self) {
         let val = ((self.frequency_hi as u16) << 8) + self.frequency_lo as u16;
         let frequency = 131_072 / (2048 - val as u64);
+        //if self.id == 1 { println!("set frequency: {}", frequency); }
         self.frequency_timer_ticks = (SOUND_SAMPLE_RATE_IN_HERTZ / frequency) as u32 /
             FREQUENCY_TIMER_TICKS_PER_PERIOD;
     }
@@ -182,6 +185,12 @@ impl Channel {
     fn volume_envelope_tick(&mut self) {
         if self.volume_envelope_period != 0 {
             self.volume_envelope_period -= 1;
+        //if self.id == 1 {
+            //println!("volume_envelope_period: {}", self.volume_envelope_period);
+            //println!("volume_envelope_tick_counts: {}", self.volume_envelope_tick_counts);
+            //println!("volume_envelope_direction: {}", self.volume_envelope_direction);
+            //println!("volume: {}", self.volume);
+        //}
             if self.volume > 0 && !self.volume_envelope_direction {
                 self.volume -= 1;
             }
@@ -220,8 +229,8 @@ impl<'a> Apu<'a> {
             queue_lengths: VecDeque::new(),
             queue_diffence_integral: 0,
             sound_on: false,
-            channel1: Channel::new(),
-            channel2: Channel::new(),
+            channel1: Channel::new(1),
+            channel2: Channel::new(2),
         }
     }
 
@@ -250,6 +259,7 @@ impl<'a> Apu<'a> {
         self.channel2.clock_tick();
         let val1 = self.channel1.get_value();
         let val2 = self.channel2.get_value();
+        //println!("val1: {}", val1);
         self.buffer.push(val1 + val2);
         if self.buffer.len() >= BUFFER_PUSH_SIZE {
             self.resample_and_push();
