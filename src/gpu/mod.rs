@@ -14,6 +14,7 @@ use self::palette::*;
 use self::sprite::*;
 use self::tile::{Tile, TileIterator};
 use self::vram::Vram;
+use std::cmp;
 pub use self::constants::CLOCK_TICKS_PER_FRAME;
 
 pub struct GpuState {
@@ -22,7 +23,7 @@ pub struct GpuState {
     pub sprites_on: bool,
     pub large_sprites: bool,
     pub bg_tile_map: TileMap,
-    pub bg_tile_set: TileSet,
+    pub bg_window_tile_set: TileSet,
     pub window_on: bool,
     pub window_tile_map: TileMap,
     display_on: bool,
@@ -30,6 +31,8 @@ pub struct GpuState {
     pub scy: u8,
     current_line: u8,
     pub lyc: u8,
+    pub window_x: u8,
+    pub window_y: u8,
     pub palettes: Palettes,
 
     pub vblank_interrupt_status: bool,
@@ -89,12 +92,14 @@ impl<D> Gpu<D>
                 sprites_on: false,
                 large_sprites: false,
                 bg_tile_map: TileMap::Map0,
-                bg_tile_set: TileSet::Set0,
+                bg_window_tile_set: TileSet::Set0,
                 window_on: false,
                 window_tile_map: TileMap::Map0,
                 display_on: false,
                 scx: 0,
                 scy: 0,
+                window_x: 0,
+                window_y: 0,
                 current_line: 0,
                 lyc: 0,
                 palettes: Palettes::new(),
@@ -199,8 +204,9 @@ impl<D> Gpu<D>
         if !self.state.display_on { return; }
         let display_line_number = self.state.get_current_line();
         let bg_pixels = self.render_bg_line(display_line_number);
+        let window_pixels = self.render_window_line(display_line_number);
         let sprite_pixels = self.render_sprites(display_line_number);
-        let pixels = self.combine_pixels(bg_pixels, sprite_pixels);
+        let pixels = self.combine_pixels(bg_pixels, window_pixels, sprite_pixels);
         self.display.set_line(display_line_number, &pixels);
     }
 
@@ -212,8 +218,24 @@ impl<D> Gpu<D>
         let y = display_line_number.wrapping_add(self.state.scy);
         let mut tile_iter = TileIterator::new(x, y, self.state.bg_tile_map, &self.vram);
         for i in 0..DIM_X {
-            pixels[i] = tile_iter.get_pixel_color(self.state.bg_tile_set);
+            pixels[i] = tile_iter.get_pixel_color(self.state.bg_window_tile_set);
             tile_iter.next();
+        }
+        pixels
+    }
+
+    fn render_window_line(&self, display_line_number: u8) -> [Option<u8>; COLS] {
+        let mut pixels = [None; COLS];
+        if !self.state.window_on { return pixels; }
+
+        if display_line_number >= self.state.window_y {
+            let start_x = cmp::max(0, self.state.window_x as i16 - 7) as usize;
+            let window_y = display_line_number - self.state.window_y;
+            let mut tile_iter = TileIterator::new(0, window_y, self.state.window_tile_map, &self.vram);
+            for i in start_x..DIM_X {
+                pixels[i] = Some(tile_iter.get_pixel_color(self.state.bg_window_tile_set));
+                tile_iter.next();
+            }
         }
         pixels
     }
@@ -257,19 +279,24 @@ impl<D> Gpu<D>
         pixels
     }
 
-    fn combine_pixels(&self, bg_pixels: [u8; COLS], sprite_pixels: [SpritePixel; COLS]) -> [u8; COLS] {
+    fn combine_pixels(&self, bg_pixels: [u8; COLS], window_pixels: [Option<u8>; COLS], sprite_pixels: [SpritePixel; COLS]) -> [u8; COLS] {
         let mut combined = [0; COLS];
-        for (i, (bg, sprite)) in bg_pixels
+        for (i, ((&bg, &window), &sprite)) in bg_pixels
             .iter()
+            .zip(window_pixels.iter())
             .zip(sprite_pixels.iter())
             .enumerate()
         {
-            combined[i] = if *bg != 0 && !sprite.priority {
-                apply_palette(*bg, Palette::BackgroundPalette, &self.state.palettes)
+            let bg = match window {
+                Some(x) => x,
+                None => bg,
+            };
+            combined[i] = if bg != 0 && !sprite.priority {
+                apply_palette(bg, Palette::BackgroundPalette, &self.state.palettes)
             } else if let Some(color) = sprite.pixel {
                 apply_palette(color, sprite.palette.unwrap(), &self.state.palettes)
             } else {
-                apply_palette(*bg, Palette::BackgroundPalette, &self.state.palettes)
+                apply_palette(bg, Palette::BackgroundPalette, &self.state.palettes)
             }
         }
         combined

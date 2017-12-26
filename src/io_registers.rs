@@ -39,6 +39,8 @@ const OFFSET_SCY: u16 = 0x42;
 const OFFSET_SCX: u16 = 0x43;
 const OFFSET_LY: u16 = 0x44;
 const OFFSET_LYC: u16 = 0x45;
+const OFFSET_WINDOW_Y: u16 = 0x4A;
+const OFFSET_WINDOW_X: u16 = 0x4B;
 const OFFSET_BACKGROUND_PALETTE: u16 = 0x47;
 const OFFSET_OBJECT0_PALETTE: u16 = 0x48;
 const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
@@ -190,11 +192,11 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let sprites_on = (state.sprites_on as u8) << 1;
                 let large_sprites = (state.large_sprites as u8) << 2;
                 let bg_tile_map = (tile_map_to_bool(state.bg_tile_map) as u8) << 3;
-                let bg_tile_set = (tile_set_to_bool(state.bg_tile_set) as u8) << 4;
+                let bg_window_tile_set = (tile_set_to_bool(state.bg_window_tile_set) as u8) << 4;
                 let window_on = (state.window_on as u8) << 5;
                 let window_tile_map = (tile_map_to_bool(state.window_tile_map) as u8) << 6;
                 let display_on = (state.get_display_on() as u8) << 7;
-                bg_on | sprites_on | large_sprites | bg_tile_map | bg_tile_set
+                bg_on | sprites_on | large_sprites | bg_tile_map | bg_window_tile_set
                       | window_on | window_tile_map | display_on
             }
             OFFSET_LCDC_STATUS => {
@@ -216,6 +218,8 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             OFFSET_SCX => self.gpu.borrow().state.scx,
             OFFSET_LY => self.gpu.borrow().state.get_current_line(),
             OFFSET_LYC => self.gpu.borrow().state.lyc,
+            OFFSET_WINDOW_Y => self.gpu.borrow().state.window_y,
+            OFFSET_WINDOW_X => self.gpu.borrow().state.window_x,
             OFFSET_BACKGROUND_PALETTE => self.gpu.borrow().state.palettes.bg,
             OFFSET_OBJECT0_PALETTE => self.gpu.borrow().state.palettes.obj0,
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow().state.palettes.obj1,
@@ -326,7 +330,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 apu.channel3.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_4_SOUND_LENGTH => {
-                self.apu.borrow_mut().channel4.set_counter(64 - value);
+                self.apu.borrow_mut().channel4.set_counter(64 - (value & 0b0011_1111));
                 self.old_io.write_byte(address, value);
             }
             OFFSET_CHANNEL_4_VOLUME_ENVELOPE => {
@@ -382,7 +386,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let sprites_on = value & 0b0000_0010 != 0;
                 let large_sprites = value & 0b0000_0100 != 0;
                 let bg_tile_map = value & 0b0000_1000 != 0;
-                let bg_tile_set = value & 0b0001_0000 != 0;
+                let bg_window_tile_set = value & 0b0001_0000 != 0;
                 let window_on = value & 0b0010_0000 != 0;
                 let window_tile_map = value & 0b0100_0000 != 0;
                 let display_on = value & 0b1000_0000 != 0;
@@ -392,7 +396,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 state.sprites_on = sprites_on;
                 state.large_sprites = large_sprites;
                 state.bg_tile_map = bool_to_tile_map(bg_tile_map);
-                state.bg_tile_set = bool_to_tile_set(bg_tile_set);
+                state.bg_window_tile_set = bool_to_tile_set(bg_window_tile_set);
                 state.window_on = window_on;
                 state.window_tile_map = bool_to_tile_map(window_tile_map);
                 if state.get_display_on() != display_on {
@@ -403,6 +407,8 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
             OFFSET_SCX => self.gpu.borrow_mut().state.scx = value,
             OFFSET_LY => (),
             OFFSET_LYC => self.gpu.borrow_mut().state.lyc = value,
+            OFFSET_WINDOW_Y => self.gpu.borrow_mut().state.window_y = value,
+            OFFSET_WINDOW_X => self.gpu.borrow_mut().state.window_x = value,
             OFFSET_BACKGROUND_PALETTE => self.gpu.borrow_mut().state.palettes.bg = value,
             OFFSET_OBJECT0_PALETTE => self.gpu.borrow_mut().state.palettes.obj0 = value,
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow_mut().state.palettes.obj1 = value,
