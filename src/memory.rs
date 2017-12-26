@@ -166,6 +166,12 @@ impl BlockMemory {
         BlockMemory { memory, read_only: true }
     }
 
+    pub fn new_mut_from_file(file: &mut File) -> BlockMemory {
+        let mut memory = Vec::<u8>::new();
+        file.read_to_end(&mut memory).unwrap();
+        BlockMemory { memory, read_only: false }
+    }
+
     pub fn read_byte_usize(&self, address: usize) -> u8 {
         self.memory[address]
     }
@@ -174,6 +180,10 @@ impl BlockMemory {
         if !self.read_only {
             self.memory[address] = value
         }
+    }
+
+    pub fn get_memory(&self) -> &Vec<u8> {
+        &self.memory
     }
 }
 

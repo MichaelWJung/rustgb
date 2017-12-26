@@ -1,3 +1,4 @@
+extern crate app_dirs;
 extern crate sdl2;
 
 mod apu;
@@ -74,6 +75,10 @@ pub fn run(file: &mut File) {
                 thread::sleep(frame_length - duration);
             }
             frame_start = time::Instant::now();
+        }
+
+        if keyboard.program_end_triggered() {
+            break;
         }
     }
 }

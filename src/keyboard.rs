@@ -28,6 +28,7 @@ fn key_to_index(keycode: Keycode) -> Option<usize> {
 pub struct Keyboard<'a> {
     key_statuses: [bool; 8],
     event_pump: &'a mut EventPump,
+    program_end_triggered: bool,
 }
 
 impl<'a> Keyboard<'a> {
@@ -35,6 +36,7 @@ impl<'a> Keyboard<'a> {
         Keyboard {
             key_statuses: [false; 8],
             event_pump,
+            program_end_triggered: false,
         }
     }
 
@@ -54,12 +56,16 @@ impl<'a> Keyboard<'a> {
         }
     }
 
+    pub fn program_end_triggered(&self) -> bool {
+        self.program_end_triggered
+    }
+
     pub fn check_events(&mut self) -> bool {
         let mut pressed = false;
         while let Some(event) = self.event_pump.poll_event() {
             match event {
                 Event::Quit { .. } |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => ::std::process::exit(0),
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => self.program_end_triggered = true,
                 Event::KeyDown { keycode: Some(key), .. } => pressed |= self.key_down(key),
                 Event::KeyUp { keycode: Some(key), .. } => self.key_up(key),
                 _ => {}

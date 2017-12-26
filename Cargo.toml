@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Michael Jung <MichaelWJung@users.noreply.github.com>"]
 
 [dependencies]
+app_dirs = "1.1.1"
 sdl2 = "0.30"
