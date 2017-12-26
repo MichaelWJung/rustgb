@@ -1,14 +1,14 @@
+mod noise_channel;
 mod square_channel;
 mod wave_channel;
+use self::noise_channel::NoiseChannel;
 use self::square_channel::SquareChannel;
 use self::wave_channel::WaveChannel;
 
 use audio::{AudioDevice, OUTPUT_SAMPLE_RATE_IN_HERTZ};
 use cpu::CLOCK_SPEED_IN_HERTZ;
 use std::collections::VecDeque;
-//const CLOCK_TICKS_PER_SAMPLE: u64 = 8;
-//const SOUND_SAMPLE_RATE_IN_HERTZ: u64 = CLOCK_SPEED_IN_HERTZ / CLOCK_TICKS_PER_SAMPLE;
-const SOUND_SAMPLE_RATE_IN_HERTZ: u64 = OUTPUT_SAMPLE_RATE_IN_HERTZ as u64 * 8;
+const SOUND_SAMPLE_RATE_IN_HERTZ: u64 = OUTPUT_SAMPLE_RATE_IN_HERTZ as u64 * 16;
 const CLOCK_TICKS_PER_SAMPLE: f64 = CLOCK_SPEED_IN_HERTZ as f64 / SOUND_SAMPLE_RATE_IN_HERTZ as f64;
 const CLOCK_TICKS_PER_512_HERTZ: u64 = CLOCK_SPEED_IN_HERTZ / 512;
 const TARGET_BUFFER_LENGTH_IN_SAMPLES: usize = 1000;
@@ -33,6 +33,7 @@ pub struct Apu<'a> {
     pub channel1: SquareChannel,
     pub channel2: SquareChannel,
     pub channel3: WaveChannel,
+    pub channel4: NoiseChannel,
 }
 
 impl<'a> Apu<'a> {
@@ -51,6 +52,7 @@ impl<'a> Apu<'a> {
             channel1: SquareChannel::new(),
             channel2: SquareChannel::new(),
             channel3: WaveChannel::new(),
+            channel4: NoiseChannel::new(),
         }
     }
 
@@ -78,10 +80,12 @@ impl<'a> Apu<'a> {
         self.channel1.clock_tick();
         self.channel2.clock_tick();
         self.channel3.clock_tick();
+        self.channel4.clock_tick();
         let val1 = self.channel1.get_value();
         let val2 = self.channel2.get_value();
         let val3 = self.channel3.get_value();
-        self.buffer.push(val1 + val2 + val3);
+        let val4 = self.channel4.get_value();
+        self.buffer.push(val1 + val2 + val3 + val4);
         if self.buffer.len() >= BUFFER_PUSH_SIZE {
             self.resample_and_push();
         }
@@ -93,10 +97,12 @@ impl<'a> Apu<'a> {
             self.channel1.length_counter_tick();
             self.channel2.length_counter_tick();
             self.channel3.length_counter_tick();
+            self.channel4.length_counter_tick();
         }
         if self.frame_sequencer_clock_counts == 7 {
             self.channel1.volume_envelope_tick();
             self.channel2.volume_envelope_tick();
+            self.channel4.volume_envelope_tick();
         }
     }
 

@@ -27,6 +27,8 @@ const OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL: u16 = 0x1C;
 const OFFSET_CHANNEL_3_FREQUENCY_LO: u16 = 0x1D;
 const OFFSET_CHANNEL_3_FREQUENCY_HI: u16 = 0x1E;
 const OFFSET_CHANNEL_4_SOUND_LENGTH: u16 = 0x20;
+const OFFSET_CHANNEL_4_VOLUME_ENVELOPE: u16 = 0x21;
+const OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER: u16 = 0x22;
 const OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL: u16 = 0x23;
 const OFFSET_SOUND_ON_OFF: u16 = 0x26;
 const OFFSET_BEGIN_WAVE_PATTERN_RAM: u16 = 0x30;
@@ -150,7 +152,24 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 frequency_hi | counter_on | 0b1011_1000
             }
             OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
-            OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => old_io | 0b0011_1111, // bits 0-5 unused
+            OFFSET_CHANNEL_4_VOLUME_ENVELOPE => {
+                let apu = self.apu.borrow();
+                let starting_volume = (apu.channel4.get_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.channel4.get_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.channel4.get_volume_envelope_period() & 0b0000_0111;
+                starting_volume | envelope_direction | envelope_period
+            }
+            OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER => {
+                let apu = self.apu.borrow();
+                let prescaler_divider = (apu.channel4.get_prescaler_divider() & 0xF) << 4;
+                let shift_register_width = (apu.channel4.get_shift_register_width() as u8) << 3;
+                let clock_divider = apu.channel4.get_clock_divider() & 0x7;
+                prescaler_divider | shift_register_width | clock_divider
+            }
+            OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => {
+                let counter_on = (self.apu.borrow().channel4.get_counter_on() as u8) << 6;
+                counter_on | 0b1011_1111 // bits 0-5 unused, bit 7 write only
+            }
             OFFSET_SOUND_ON_OFF => {
                 let apu = self.apu.borrow();
                 let sound_on = (apu.get_sound_on() as u8) << 7;
@@ -305,6 +324,35 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 }
                 apu.channel3.set_counter_on(value & 0b0100_0000 != 0);
                 apu.channel3.set_frequency_hi(value & 0b0000_0111);
+            }
+            OFFSET_CHANNEL_4_SOUND_LENGTH => {
+                self.apu.borrow_mut().channel4.set_counter(64 - value);
+                self.old_io.write_byte(address, value);
+            }
+            OFFSET_CHANNEL_4_VOLUME_ENVELOPE => {
+                let starting_volume = (value & 0b1111_0000) >> 4;
+                let envelope_direction = value & 0b0000_1000 != 0;
+                let envelope_period = value & 0b0000_0111;
+                let mut apu = self.apu.borrow_mut();
+                apu.channel4.set_envelope_starting_volume(starting_volume);
+                apu.channel4.set_volume_envelope_direction(envelope_direction);
+                apu.channel4.set_volume_envelope_period(envelope_period);
+            }
+            OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER => {
+                let prescaler_divider = (value & 0b1111_0000) >> 4;
+                let shift_register_width = value & 0b0000_1000 != 0;
+                let clock_divider = value & 0b0000_0111;
+                let mut apu = self.apu.borrow_mut();
+                apu.channel4.set_prescaler_divider(prescaler_divider);
+                apu.channel4.set_shift_register_width(shift_register_width);
+                apu.channel4.set_clock_divider(clock_divider);
+            }
+            OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => {
+                let mut apu = self.apu.borrow_mut();
+                if value & 0b1000_0000 != 0 {
+                    apu.channel4.restart_sound();
+                }
+                apu.channel4.set_counter_on(value & 0b0100_0000 != 0);
             }
             OFFSET_SOUND_ON_OFF => {
                 self.apu.borrow_mut().set_sound_on(value & 0b1000_0000 != 0);
