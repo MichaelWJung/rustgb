@@ -103,10 +103,13 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let envelope_period = apu.channel1.get_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
+            // TODO: Looks like frequency_lo cannot be read
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().channel1.get_frequency_lo(),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
+                // TODO: Looks like frequency_hi cannot be read
                 let frequency_hi = apu.channel1.get_frequency_hi() & 0b0000_0111;
+                // TODO: Counter_on is on bit 6, bit 7 cannot be read
                 let counter_on = (apu.channel1.get_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
@@ -121,10 +124,13 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let envelope_period = apu.channel2.get_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
+            // TODO: Looks like frequency_lo cannot be read
             OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow().channel2.get_frequency_lo(),
             OFFSET_CHANNEL_2_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
+                // TODO: Looks like frequency_hi cannot be read
                 let frequency_hi = apu.channel2.get_frequency_hi() & 0b0000_0111;
+                // TODO: Counter_on is on bit 6, bit 7 cannot be read
                 let counter_on = (apu.channel2.get_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
@@ -241,6 +247,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 if value & 0b1000_0000 != 0 {
                     apu.channel1.restart_sound();
                 }
+                // TODO: Should be bit 6
                 apu.channel1.set_counter_on(value & 0b1000_0000 != 0);
                 apu.channel1.set_frequency_hi(value & 0b0000_0111);
             }
@@ -266,6 +273,7 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 if value & 0b1000_0000 != 0 {
                     apu.channel2.restart_sound();
                 }
+                // TODO: Should be bit 6
                 apu.channel2.set_counter_on(value & 0b1000_0000 != 0);
                 apu.channel2.set_frequency_hi(value & 0b0000_0111);
             }
