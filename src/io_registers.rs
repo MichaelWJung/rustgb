@@ -22,10 +22,15 @@ const OFFSET_CHANNEL_2_VOLUME_ENVELOPE: u16 = 0x17;
 const OFFSET_CHANNEL_2_FREQUENCY_LO: u16 = 0x18;
 const OFFSET_CHANNEL_2_FREQUENCY_HI: u16 = 0x19;
 const OFFSET_CHANNEL_3_SOUND_ON_OFF: u16 = 0x1A;
+const OFFSET_CHANNEL_3_SOUND_LENGTH: u16 = 0x1B;
 const OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL: u16 = 0x1C;
+const OFFSET_CHANNEL_3_FREQUENCY_LO: u16 = 0x1D;
+const OFFSET_CHANNEL_3_FREQUENCY_HI: u16 = 0x1E;
 const OFFSET_CHANNEL_4_SOUND_LENGTH: u16 = 0x20;
 const OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL: u16 = 0x23;
 const OFFSET_SOUND_ON_OFF: u16 = 0x26;
+const OFFSET_BEGIN_WAVE_PATTERN_RAM: u16 = 0x30;
+const OFFSET_END_WAVE_PATTERN_RAM: u16 = 0x3F;
 const OFFSET_LCD_CONTROL: u16 = 0x40;
 const OFFSET_LCDC_STATUS: u16 = 0x41;
 const OFFSET_SCY: u16 = 0x42;
@@ -123,8 +128,21 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let counter_on = (apu.channel2.get_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
-            OFFSET_CHANNEL_3_SOUND_ON_OFF => old_io | 0b0111_1111, // bits 0-6 unused
+            OFFSET_CHANNEL_3_SOUND_ON_OFF => {
+                let sound_on = (self.apu.borrow().channel3.get_on() as u8) << 7;
+                sound_on | 0b0111_1111 // bits 0-6 unused
+            }
+            OFFSET_CHANNEL_3_SOUND_LENGTH => old_io,
             OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => old_io | 0b1001_1111, // bits 0-4,7 unused
+            // TODO: Looks like frequency_lo cannot be read
+            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow().channel3.get_frequency_lo(),
+            OFFSET_CHANNEL_3_FREQUENCY_HI => {
+                let apu = self.apu.borrow();
+                let frequency_hi = apu.channel3.get_frequency_hi() & 0b0000_0111;
+                let counter_on = (apu.channel3.get_counter_on() as u8) << 6;
+                // TODO: Looks like frequency_hi cannot be read
+                frequency_hi | counter_on | 0b1011_1000
+            }
             OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
             OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => old_io | 0b0011_1111, // bits 0-5 unused
             OFFSET_SOUND_ON_OFF => {
@@ -132,6 +150,13 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 let sound_on = (apu.get_sound_on() as u8) << 7;
                 let channel1_on = apu.channel1.get_on() as u8;
                 sound_on | channel1_on | 0b0111_0000 // buts 4-6 unused
+            }
+            OFFSET_BEGIN_WAVE_PATTERN_RAM...OFFSET_END_WAVE_PATTERN_RAM => {
+                let offset = (address - OFFSET_BEGIN_WAVE_PATTERN_RAM) as usize * 2;
+                let apu = self.apu.borrow();
+                let first = apu.channel3.wave_pattern[offset] & 0xF;
+                let second = apu.channel3.wave_pattern[offset + 1] & 0xF;
+                (first << 4) | second
             }
             OFFSET_LCD_CONTROL => {
                 let gpu = self.gpu.borrow();
@@ -244,8 +269,45 @@ impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
                 apu.channel2.set_counter_on(value & 0b1000_0000 != 0);
                 apu.channel2.set_frequency_hi(value & 0b0000_0111);
             }
+            OFFSET_CHANNEL_3_SOUND_ON_OFF => {
+                let sound_on = value & 0b1000_0000 != 0;
+                self.apu.borrow_mut().channel3.set_on(sound_on);
+            }
+            OFFSET_CHANNEL_3_SOUND_LENGTH => {
+                self.apu.borrow_mut().channel3.set_counter(256 - value as u16);
+                self.old_io.write_byte(address, value);
+            }
+            OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => {
+                let volume = (value & 0b0110_0000) >> 5;
+                let volume = match volume {
+                    0 => 0,
+                    1 => 3,
+                    2 => 2,
+                    3 => 1,
+                    _ => panic!("Code location should be unreachable"),
+                };
+                self.apu.borrow_mut().channel3.set_volume(volume);
+                self.old_io.write_byte(address, value);
+            }
+            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow_mut().channel3.set_frequency_lo(value),
+            OFFSET_CHANNEL_3_FREQUENCY_HI => {
+                let mut apu = self.apu.borrow_mut();
+                if value & 0b1000_0000 != 0 {
+                    apu.channel3.restart_sound();
+                }
+                apu.channel3.set_counter_on(value & 0b0100_0000 != 0);
+                apu.channel3.set_frequency_hi(value & 0b0000_0111);
+            }
             OFFSET_SOUND_ON_OFF => {
                 self.apu.borrow_mut().set_sound_on(value & 0b1000_0000 != 0);
+            }
+            OFFSET_BEGIN_WAVE_PATTERN_RAM...OFFSET_END_WAVE_PATTERN_RAM => {
+                let offset = (address - OFFSET_BEGIN_WAVE_PATTERN_RAM) as usize * 2;
+                let first = (value & 0xF0) >> 4;
+                let second = value & 0xF;
+                let mut apu = self.apu.borrow_mut();
+                apu.channel3.wave_pattern[offset] = first;
+                apu.channel3.wave_pattern[offset + 1] = second;
             }
             OFFSET_LCDC_STATUS => {
                 let hblank_interrupt = value & 0b0000_1000 != 0;

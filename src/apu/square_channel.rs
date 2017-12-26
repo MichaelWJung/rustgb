@@ -1,5 +1,5 @@
 use super::SOUND_SAMPLE_RATE_IN_HERTZ;
-use super::FREQUENCY_TIMER_TICKS_PER_PERIOD;
+const FREQUENCY_TIMER_TICKS_PER_PERIOD: u32 = 8;
 
 pub struct SquareChannel {
     frequency_timer_ticks: u32,
