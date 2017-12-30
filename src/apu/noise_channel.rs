@@ -87,6 +87,9 @@ impl NoiseChannel {
         } else {
             ShiftRegisterWidth::FifteenBit
         };
+        // Reset shift register because we might get all zeroes if we switch in
+        // the wrong moment
+        self.shift_register = 0x7FFF;
     }
 
     pub fn get_shift_register_width(&self) -> bool {
