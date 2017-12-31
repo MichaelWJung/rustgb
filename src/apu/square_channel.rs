@@ -1,4 +1,5 @@
 use super::SOUND_SAMPLE_RATE_IN_HERTZ;
+use super::volume_envelope::VolumeEnvelope;
 const FREQUENCY_TIMER_TICKS_PER_PERIOD: u32 = 8;
 
 pub struct SquareChannel {
@@ -11,11 +12,7 @@ pub struct SquareChannel {
     on: bool,
     counter_on: bool,
     counter: u8,
-    volume: u8,
-    envelope_starting_volume: u8,
-    volume_envelope_direction: bool,
-    volume_envelope_period: u8,
-    volume_envelope_tick_counts: u8,
+    volume_envelope: VolumeEnvelope,
 }
 
 impl SquareChannel {
@@ -32,11 +29,7 @@ impl SquareChannel {
             on: false,
             counter_on: false,
             counter: 0,
-            volume: 15,
-            envelope_starting_volume: 0,
-            volume_envelope_direction: false,
-            volume_envelope_period: 0,
-            volume_envelope_tick_counts: 0,
+            volume_envelope: VolumeEnvelope::new(),
         }
     }
 
@@ -89,30 +82,27 @@ impl SquareChannel {
     }
 
     pub fn set_envelope_starting_volume(&mut self, value: u8) {
-        assert!(value < 0x10);
-        self.envelope_starting_volume = value;
-        self.volume = value;
+        self.volume_envelope.set_starting_volume(value);
     }
 
     pub fn get_envelope_starting_volume(&self) -> u8 {
-        self.envelope_starting_volume
+        self.volume_envelope.get_starting_volume()
     }
 
     pub fn set_volume_envelope_direction(&mut self, direction: bool) {
-        self.volume_envelope_direction = direction;
+        self.volume_envelope.set_direction(direction);
     }
 
     pub fn get_volume_envelope_direction(&self) -> bool {
-        self.volume_envelope_direction
+        self.volume_envelope.get_direction()
     }
 
     pub fn set_volume_envelope_period(&mut self, period: u8) {
-        self.volume_envelope_period = period;
-        self.volume_envelope_tick_counts = period;
+        self.volume_envelope.set_period(period);
     }
 
     pub fn get_volume_envelope_period(&self) -> u8 {
-        self.volume_envelope_period
+        self.volume_envelope.get_period()
     }
 
     fn set_frequency(&mut self) {
@@ -149,12 +139,8 @@ impl SquareChannel {
         }
     }
 
-    fn apply_volume_control(&self, sample: i16) -> i16 {
-        sample * self.volume as i16 * (8000/15)
-    }
-
     pub fn get_value(&self) -> i16 {
-        self.apply_volume_control(self.get_output())
+        self.volume_envelope.apply_volume_control(self.get_output())
     }
 
     pub fn length_counter_tick(&mut self) {
@@ -170,18 +156,8 @@ impl SquareChannel {
     }
 
     pub fn volume_envelope_tick(&mut self) {
-        if !self.on || self.volume_envelope_period == 0 { return; }
-        if self.volume_envelope_tick_counts > 0 {
-            self.volume_envelope_tick_counts -= 1;
-        }
-        if self.volume_envelope_tick_counts == 0 {
-            self.volume_envelope_tick_counts = self.volume_envelope_period;
-            if self.volume > 0 && !self.volume_envelope_direction {
-                self.volume -= 1;
-            }
-            if self.volume < 15 && self.volume_envelope_direction {
-                self.volume += 1;
-            }
+        if self.on {
+            self.volume_envelope.tick();
         }
     }
 }

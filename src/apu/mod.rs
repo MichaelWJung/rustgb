@@ -1,5 +1,6 @@
 mod noise_channel;
 mod square_channel;
+mod volume_envelope;
 mod wave_channel;
 use self::noise_channel::NoiseChannel;
 use self::square_channel::SquareChannel;
