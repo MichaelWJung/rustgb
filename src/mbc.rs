@@ -98,9 +98,9 @@ impl Memory for Mbc1 {
             0x6000 ... 0x7FFF => {
                 if self.has_ram {
                     self.mode = if value & 0x1 != 0 {
-                        RomRamMode::RomBankingMode
-                    } else {
                         RomRamMode::RamBankingMode
+                    } else {
+                        RomRamMode::RomBankingMode
                     };
                     self.update_bank_numbers();
                 }
