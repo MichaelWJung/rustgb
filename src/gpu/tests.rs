@@ -33,7 +33,7 @@ fn test_simple_background_tile_map_0_set_0() {
         {
             gpu.state.palettes.bg = 0b11100100;
             gpu.state.set_display_on(true);
-            gpu.state.bg_tile_set = TileSet::Set0;
+            gpu.state.bg_window_tile_set = TileSet::Set0;
             gpu.state.bg_tile_map = TileMap::Map0;
             gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
@@ -86,7 +86,7 @@ fn test_simple_background_tile_map_1_set_0() {
         {
             gpu.state.palettes.bg = 0b11100100;
             gpu.state.set_display_on(true);
-            gpu.state.bg_tile_set = TileSet::Set0;
+            gpu.state.bg_window_tile_set = TileSet::Set0;
             gpu.state.bg_tile_map = TileMap::Map1;
             gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
@@ -127,7 +127,7 @@ fn test_simple_background_tile_map_0_set_1() {
         {
             gpu.state.palettes.bg = 0b11100100;
             gpu.state.set_display_on(true);
-            gpu.state.bg_tile_set = TileSet::Set1;
+            gpu.state.bg_window_tile_set = TileSet::Set1;
             gpu.state.bg_tile_map = TileMap::Map0;
             gpu.state.bg_on = true;
             let vram = gpu.get_vram_mut();
