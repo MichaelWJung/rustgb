@@ -46,7 +46,8 @@ const OFFSET_OBJECT0_PALETTE: u16 = 0x48;
 const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
 
 pub struct IoRegisters<'a, D>
-    where D: Display + 'a
+where
+    D: Display + 'a,
 {
     old_io: BlockMemory,
     apu: &'a RefCell<Apu<'a>>,
@@ -55,9 +56,14 @@ pub struct IoRegisters<'a, D>
 }
 
 impl<'a, D> IoRegisters<'a, D>
-    where D: Display
+where
+    D: Display,
 {
-    pub fn new(apu: &'a RefCell<Apu<'a>>, gpu: &'a RefCell<Gpu<D>>, timer: &'a RefCell<Timer>) -> IoRegisters<'a, D> {
+    pub fn new(
+        apu: &'a RefCell<Apu<'a>>,
+        gpu: &'a RefCell<Gpu<D>>,
+        timer: &'a RefCell<Timer>,
+    ) -> IoRegisters<'a, D> {
         IoRegisters {
             old_io: BlockMemory::new(0x80),
             apu,
@@ -67,8 +73,9 @@ impl<'a, D> IoRegisters<'a, D>
     }
 }
 
-impl <'a, D> Memory for IoRegisters<'a, D>
-    where D: Display
+impl<'a, D> Memory for IoRegisters<'a, D>
+where
+    D: Display,
 {
     fn read_byte(&self, address: u16) -> u8 {
         let old_io = self.old_io.read_byte(address);
@@ -90,10 +97,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let vblank_interrupt = state.vblank_interrupt_status as u8;
                 let state_interrupt = (state.state_interrupt_status as u8) << 1;
                 let timer_interrupt = (self.timer.borrow().timer_interrupt as u8) << 2;
-                old_io & 0b0001_1000 | vblank_interrupt
-                                     | state_interrupt
-                                     | timer_interrupt
-                                     | 0b1110_0000 // bits 5-7 unused
+                old_io & 0b0001_1000 | vblank_interrupt | state_interrupt | timer_interrupt |
+                    0b1110_0000 // bits 5-7 unused
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
             OFFSET_CHANNEL_1_LENGTH_DUTY => {
@@ -196,8 +201,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let window_on = (state.window_on as u8) << 5;
                 let window_tile_map = (tile_map_to_bool(state.window_tile_map) as u8) << 6;
                 let display_on = (state.get_display_on() as u8) << 7;
-                bg_on | sprites_on | large_sprites | bg_tile_map | bg_window_tile_set
-                      | window_on | window_tile_map | display_on
+                bg_on | sprites_on | large_sprites | bg_tile_map | bg_window_tile_set |
+                    window_on | window_tile_map | display_on
             }
             OFFSET_LCDC_STATUS => {
                 let gpu = self.gpu.borrow();
@@ -206,13 +211,10 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let hblank_interrupt = (state.state_interrupt_hblank as u8) << 3;
                 let vblank_interrupt = (state.state_interrupt_vblank as u8) << 4;
                 let oam_interrupt = (state.state_interrupt_oam as u8) << 5;
-                let lycly_coincidence_interrupt = (state.state_interrupt_lycly_coincidence as u8) << 6;
-                old_io & 0b0000_0100 | mode_flag
-                                     | hblank_interrupt
-                                     | vblank_interrupt
-                                     | oam_interrupt
-                                     | lycly_coincidence_interrupt
-                                     | 0b1000_0000 // bit 7 unused
+                let lycly_coincidence_interrupt = (state.state_interrupt_lycly_coincidence as u8) <<
+                    6;
+                old_io & 0b0000_0100 | mode_flag | hblank_interrupt | vblank_interrupt |
+                    oam_interrupt | lycly_coincidence_interrupt | 0b1000_0000 // bit 7 unused
             }
             OFFSET_SCY => self.gpu.borrow().state.scy,
             OFFSET_SCX => self.gpu.borrow().state.scx,
@@ -224,8 +226,8 @@ impl <'a, D> Memory for IoRegisters<'a, D>
             OFFSET_OBJECT0_PALETTE => self.gpu.borrow().state.palettes.obj0,
             OFFSET_OBJECT1_PALETTE => self.gpu.borrow().state.palettes.obj1,
             // Completely unused bytes
-            0x03 | 0x08 | 0x09 | 0x0A | 0x0B | 0x0C | 0x0D | 0x0E | 0x15 | 0x1F
-                 | 0x27 | 0x28 | 0x29 | 0x4C ... 0x7F => 0xFF,
+            0x03 | 0x08 | 0x09 | 0x0A | 0x0B | 0x0C | 0x0D | 0x0E | 0x15 | 0x1F | 0x27 | 0x28 |
+            0x29 | 0x4C...0x7F => 0xFF,
             _ => old_io,
         }
     }
@@ -261,7 +263,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
                 apu.channel1.set_envelope_starting_volume(starting_volume);
-                apu.channel1.set_volume_envelope_direction(envelope_direction);
+                apu.channel1.set_volume_envelope_direction(
+                    envelope_direction,
+                );
                 apu.channel1.set_volume_envelope_period(envelope_period);
             }
             OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().channel1.set_frequency_lo(value),
@@ -287,7 +291,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
                 apu.channel2.set_envelope_starting_volume(starting_volume);
-                apu.channel2.set_volume_envelope_direction(envelope_direction);
+                apu.channel2.set_volume_envelope_direction(
+                    envelope_direction,
+                );
                 apu.channel2.set_volume_envelope_period(envelope_period);
             }
             OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow_mut().channel2.set_frequency_lo(value),
@@ -305,7 +311,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 self.apu.borrow_mut().channel3.set_on(sound_on);
             }
             OFFSET_CHANNEL_3_SOUND_LENGTH => {
-                self.apu.borrow_mut().channel3.set_counter(256 - value as u16);
+                self.apu.borrow_mut().channel3.set_counter(
+                    256 - value as u16,
+                );
                 self.old_io.write_byte(address, value);
             }
             OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => {
@@ -330,7 +338,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 apu.channel3.set_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_4_SOUND_LENGTH => {
-                self.apu.borrow_mut().channel4.set_counter(64 - (value & 0b0011_1111));
+                self.apu.borrow_mut().channel4.set_counter(
+                    64 - (value & 0b0011_1111),
+                );
                 self.old_io.write_byte(address, value);
             }
             OFFSET_CHANNEL_4_VOLUME_ENVELOPE => {
@@ -339,7 +349,9 @@ impl <'a, D> Memory for IoRegisters<'a, D>
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
                 apu.channel4.set_envelope_starting_volume(starting_volume);
-                apu.channel4.set_volume_envelope_direction(envelope_direction);
+                apu.channel4.set_volume_envelope_direction(
+                    envelope_direction,
+                );
                 apu.channel4.set_volume_envelope_period(envelope_period);
             }
             OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER => {

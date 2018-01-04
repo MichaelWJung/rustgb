@@ -23,7 +23,11 @@ impl SdlDisplayContext {
     pub fn new(sdl_context: &Sdl) -> SdlDisplayContext {
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem
-            .window("RustGB", SCALE_FACTOR * COLS as u32, SCALE_FACTOR * ROWS as u32)
+            .window(
+                "RustGB",
+                SCALE_FACTOR * COLS as u32,
+                SCALE_FACTOR * ROWS as u32,
+            )
             .position_centered()
             .opengl()
             .build()
