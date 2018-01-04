@@ -28,7 +28,6 @@ pub fn run(file: &mut File) {
     let sdl_context = sdl2::init().unwrap();
 
     let audio_device = audio::create_audio_device(&sdl_context);
-    let apu = RefCell::new(apu::Apu::new(audio_device.deref()));
 
     let mut display_context = display::SdlDisplayContext::new(&sdl_context);
     let display = display::SdlDisplay::new(&mut display_context);
@@ -44,8 +43,9 @@ pub fn run(file: &mut File) {
     let mut bios = memory::BlockMemory::new_from_file(&mut bios);
     let timer = RefCell::new(timer::Timer::new());
     let gpu = RefCell::new(gpu::Gpu::new(display));
+    let apu = RefCell::new(apu::Apu::new(audio_device.deref()));
     let io = RefCell::new(io_registers::IoRegisters::new(&apu, &gpu, &timer));
-    let memory_map = memory::MemoryMap::new(&mut bios, &gpu, mbc, &io);
+    let memory_map = memory::MemoryMap::new(&mut bios, mbc, &gpu, &io);
     let mut cpu = cpu::Cpu::new(memory_map);
 
     let mut next_frame = gpu::CLOCK_TICKS_PER_FRAME as u64;

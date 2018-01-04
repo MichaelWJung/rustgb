@@ -36,41 +36,35 @@ pub trait Memory {
     fn leave_bios(&mut self) {}
 }
 
-pub struct MemoryMap<'a, 'b, 'c, 'd, 'e, 'f, 'h, D>
-    where 'c: 'b,
-          'd: 'b,
-          'd: 'c,
-          'e: 'b,
-          'f: 'b,
-          'f: 'e,
-          D: Display + 'b + 'h + 'e
+pub struct MemoryMap<'a, 'b, D>
+    where 'b: 'a, D: Display + 'b
 {
     bios_active: bool,
-    bios: &'a mut BlockMemory,
+    bios: &'b mut BlockMemory,
     mbc: Box<Memory>,
     working_ram: BlockMemory,
     zero_page: BlockMemory,
-    io: &'b RefCell<IoRegisters<'c, 'd, 'e, 'f, D>>,
-    gpu: &'h RefCell<Gpu<D>>,
+    gpu: &'b RefCell<Gpu<D>>,
+    io: &'a RefCell<IoRegisters<'b, D>>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'h, D> MemoryMap<'a, 'b, 'c, 'd, 'e, 'f, 'h, D>
+impl<'a, 'b, D> MemoryMap<'a, 'b, D>
     where D: Display
 {
     pub fn new(
-        bios: &'a mut BlockMemory,
-        gpu: &'h RefCell<Gpu<D>>,
+        bios: &'b mut BlockMemory,
         mbc: Box<Memory>,
-        io: &'b RefCell<IoRegisters<'c, 'd, 'e, 'f, D>>
-        ) -> MemoryMap<'a, 'b, 'c, 'd, 'e, 'f, 'h, D> {
+        gpu: &'b RefCell<Gpu<D>>,
+        io: &'a RefCell<IoRegisters<'b, D>>
+        ) -> MemoryMap<'a, 'b, D> {
         MemoryMap {
             bios_active: true,
             bios,
             mbc,
             working_ram: BlockMemory::new(0x2000),
             zero_page: BlockMemory::new(0x80),
+            gpu,
             io,
-            gpu
         }
     }
 
@@ -97,7 +91,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'h, D> MemoryMap<'a, 'b, 'c, 'd, 'e, 'f, 'h, D>
     }
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'h, D> Memory for MemoryMap<'a, 'b, 'c, 'd, 'e, 'f, 'h, D>
+impl<'a, 'b, D> Memory for MemoryMap<'a, 'b, D>
     where D: Display {
     fn read_byte(&self, address: u16) -> u8 {
         let (memory_type, address) = self.address_to_type(address);

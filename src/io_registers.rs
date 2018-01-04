@@ -45,19 +45,19 @@ const OFFSET_BACKGROUND_PALETTE: u16 = 0x47;
 const OFFSET_OBJECT0_PALETTE: u16 = 0x48;
 const OFFSET_OBJECT1_PALETTE: u16 = 0x49;
 
-pub struct IoRegisters<'a, 'b, 'c, 'd, D>
-    where D: Display + 'c, 'b: 'a, 'd: 'c
+pub struct IoRegisters<'a, D>
+    where D: Display + 'a
 {
     old_io: BlockMemory,
-    apu: &'a RefCell<Apu<'b>>,
-    gpu: &'c RefCell<Gpu<D>>,
-    timer: &'d RefCell<Timer>,
+    apu: &'a RefCell<Apu<'a>>,
+    gpu: &'a RefCell<Gpu<D>>,
+    timer: &'a RefCell<Timer>,
 }
 
-impl<'a, 'b, 'c, 'd, D> IoRegisters<'a, 'b, 'c, 'd, D>
+impl<'a, D> IoRegisters<'a, D>
     where D: Display
 {
-    pub fn new(apu: &'a RefCell<Apu<'b>>, gpu: &'c RefCell<Gpu<D>>, timer: &'d RefCell<Timer>) -> IoRegisters<'a, 'b, 'c, 'd, D> {
+    pub fn new(apu: &'a RefCell<Apu<'a>>, gpu: &'a RefCell<Gpu<D>>, timer: &'a RefCell<Timer>) -> IoRegisters<'a, D> {
         IoRegisters {
             old_io: BlockMemory::new(0x80),
             apu,
@@ -67,7 +67,7 @@ impl<'a, 'b, 'c, 'd, D> IoRegisters<'a, 'b, 'c, 'd, D>
     }
 }
 
-impl <'a, 'b, 'c, 'd, D> Memory for IoRegisters<'a, 'b, 'c, 'd, D>
+impl <'a, D> Memory for IoRegisters<'a, D>
     where D: Display
 {
     fn read_byte(&self, address: u16) -> u8 {
