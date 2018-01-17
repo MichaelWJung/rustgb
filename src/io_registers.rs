@@ -102,92 +102,94 @@ where
             }
             OFFSET_CHANNEL_1_SWEEP_REGISTER => old_io | 0b1000_0000, // bit 7 unused
             OFFSET_CHANNEL_1_LENGTH_DUTY => {
-                let duty = self.apu.borrow().channel1.get_duty() << 6;
+                let duty = self.apu.borrow().get_channel1_duty() << 6;
                 duty | 0b0011_1111
             }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
-                let starting_volume = (apu.channel1.get_envelope_starting_volume() & 0xF) << 4;
-                let envelope_direction = (apu.channel1.get_volume_envelope_direction() as u8) << 3;
-                let envelope_period = apu.channel1.get_volume_envelope_period() & 0b0000_0111;
+                let starting_volume = (apu.get_channel1_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.get_channel1_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.get_channel1_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
             // TODO: Looks like frequency_lo cannot be read
-            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().channel1.get_frequency_lo(),
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow().get_channel1_frequency_lo(),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
                 // TODO: Looks like frequency_hi cannot be read
-                let frequency_hi = apu.channel1.get_frequency_hi() & 0b0000_0111;
+                let frequency_hi = apu.get_channel1_frequency_hi() & 0b0000_0111;
                 // TODO: Counter_on is on bit 6, bit 7 cannot be read
-                let counter_on = (apu.channel1.get_counter_on() as u8) << 7;
+                let counter_on = (apu.get_channel1_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
             OFFSET_CHANNEL_2_LENGTH_DUTY => {
-                let duty = self.apu.borrow().channel2.get_duty() << 6;
+                let duty = self.apu.borrow().get_channel2_duty() << 6;
                 duty | 0b0011_1111
             }
             OFFSET_CHANNEL_2_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
-                let starting_volume = (apu.channel2.get_envelope_starting_volume() & 0xF) << 4;
-                let envelope_direction = (apu.channel2.get_volume_envelope_direction() as u8) << 3;
-                let envelope_period = apu.channel2.get_volume_envelope_period() & 0b0000_0111;
+                let starting_volume = (apu.get_channel2_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.get_channel2_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.get_channel2_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
             // TODO: Looks like frequency_lo cannot be read
-            OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow().channel2.get_frequency_lo(),
+            OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow().get_channel2_frequency_lo(),
             OFFSET_CHANNEL_2_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
                 // TODO: Looks like frequency_hi cannot be read
-                let frequency_hi = apu.channel2.get_frequency_hi() & 0b0000_0111;
+                let frequency_hi = apu.get_channel2_frequency_hi() & 0b0000_0111;
                 // TODO: Counter_on is on bit 6, bit 7 cannot be read
-                let counter_on = (apu.channel2.get_counter_on() as u8) << 7;
+                let counter_on = (apu.get_channel2_counter_on() as u8) << 7;
                 frequency_hi | counter_on | 0b1011_1000
             }
             OFFSET_CHANNEL_3_SOUND_ON_OFF => {
-                let sound_on = (self.apu.borrow().channel3.get_on() as u8) << 7;
+                let sound_on = (self.apu.borrow().get_channel3_on() as u8) << 7;
                 sound_on | 0b0111_1111 // bits 0-6 unused
             }
             OFFSET_CHANNEL_3_SOUND_LENGTH => old_io,
             OFFSET_CHANNEL_3_SELECT_OUTPUT_LEVEL => old_io | 0b1001_1111, // bits 0-4,7 unused
             // TODO: Looks like frequency_lo cannot be read
-            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow().channel3.get_frequency_lo(),
+            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow().get_channel3_frequency_lo(),
             OFFSET_CHANNEL_3_FREQUENCY_HI => {
                 let apu = self.apu.borrow();
-                let frequency_hi = apu.channel3.get_frequency_hi() & 0b0000_0111;
-                let counter_on = (apu.channel3.get_counter_on() as u8) << 6;
+                let frequency_hi = apu.get_channel3_frequency_hi() & 0b0000_0111;
+                let counter_on = (apu.get_channel3_counter_on() as u8) << 6;
                 // TODO: Looks like frequency_hi cannot be read
                 frequency_hi | counter_on | 0b1011_1000
             }
             OFFSET_CHANNEL_4_SOUND_LENGTH => old_io | 0b1100_0000, // bits 6-7 unused
             OFFSET_CHANNEL_4_VOLUME_ENVELOPE => {
                 let apu = self.apu.borrow();
-                let starting_volume = (apu.channel4.get_envelope_starting_volume() & 0xF) << 4;
-                let envelope_direction = (apu.channel4.get_volume_envelope_direction() as u8) << 3;
-                let envelope_period = apu.channel4.get_volume_envelope_period() & 0b0000_0111;
+                let starting_volume = (apu.get_channel4_envelope_starting_volume() & 0xF) << 4;
+                let envelope_direction = (apu.get_channel4_volume_envelope_direction() as u8) << 3;
+                let envelope_period = apu.get_channel4_volume_envelope_period() & 0b0000_0111;
                 starting_volume | envelope_direction | envelope_period
             }
             OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER => {
                 let apu = self.apu.borrow();
-                let prescaler_divider = (apu.channel4.get_prescaler_divider() & 0xF) << 4;
-                let shift_register_width = (apu.channel4.get_shift_register_width() as u8) << 3;
-                let clock_divider = apu.channel4.get_clock_divider() & 0x7;
+                let prescaler_divider = (apu.get_channel4_prescaler_divider() & 0xF) << 4;
+                let shift_register_width = (apu.get_channel4_shift_register_width() as u8) << 3;
+                let clock_divider = apu.get_channel4_clock_divider() & 0x7;
                 prescaler_divider | shift_register_width | clock_divider
             }
             OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => {
-                let counter_on = (self.apu.borrow().channel4.get_counter_on() as u8) << 6;
+                let counter_on = (self.apu.borrow().get_channel4_counter_on() as u8) << 6;
                 counter_on | 0b1011_1111 // bits 0-5 unused, bit 7 write only
             }
             OFFSET_SOUND_ON_OFF => {
                 let apu = self.apu.borrow();
                 let sound_on = (apu.get_sound_on() as u8) << 7;
-                let channel1_on = apu.channel1.get_on() as u8;
-                sound_on | channel1_on | 0b0111_0000 // buts 4-6 unused
+                let channel1_on = apu.get_channel1_on() as u8;
+                let channel2_on = (apu.get_channel2_on() as u8) << 1;
+                sound_on | channel1_on | channel2_on | 0b0111_0000 // buts 4-6 unused
             }
             OFFSET_BEGIN_WAVE_PATTERN_RAM...OFFSET_END_WAVE_PATTERN_RAM => {
                 let offset = (address - OFFSET_BEGIN_WAVE_PATTERN_RAM) as usize * 2;
                 let apu = self.apu.borrow();
-                let first = apu.channel3.wave_pattern[offset] & 0xF;
-                let second = apu.channel3.wave_pattern[offset + 1] & 0xF;
+                let wave_pattern = apu.channel3_wave_pattern();
+                let first = wave_pattern[offset] & 0xF;
+                let second = wave_pattern[offset + 1] & 0xF;
                 (first << 4) | second
             }
             OFFSET_LCD_CONTROL => {
@@ -254,64 +256,64 @@ where
                 let length = value & 0b0011_1111;
                 let duty = (value & 0b1100_0000) >> 6;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel1.set_counter(64 - length);
-                apu.channel1.set_duty(duty);
+                apu.set_channel1_counter(64 - length);
+                apu.set_channel1_duty(duty);
             }
             OFFSET_CHANNEL_1_VOLUME_ENVELOPE => {
                 let starting_volume = (value & 0b1111_0000) >> 4;
                 let envelope_direction = value & 0b0000_1000 != 0;
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel1.set_envelope_starting_volume(starting_volume);
-                apu.channel1.set_volume_envelope_direction(
+                apu.set_channel1_envelope_starting_volume(starting_volume);
+                apu.set_channel1_volume_envelope_direction(
                     envelope_direction,
                 );
-                apu.channel1.set_volume_envelope_period(envelope_period);
+                apu.set_channel1_volume_envelope_period(envelope_period);
             }
-            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().channel1.set_frequency_lo(value),
+            OFFSET_CHANNEL_1_FREQUENCY_LO => self.apu.borrow_mut().set_channel1_frequency_lo(value),
             OFFSET_CHANNEL_1_FREQUENCY_HI => {
                 let mut apu = self.apu.borrow_mut();
                 if value & 0b1000_0000 != 0 {
-                    apu.channel1.restart_sound();
+                    apu.restart_channel1_sound();
                 }
                 // TODO: Should be bit 6
-                apu.channel1.set_counter_on(value & 0b1000_0000 != 0);
-                apu.channel1.set_frequency_hi(value & 0b0000_0111);
+                apu.set_channel1_counter_on(value & 0b1000_0000 != 0);
+                apu.set_channel1_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_2_LENGTH_DUTY => {
                 let length = value & 0b0011_1111;
                 let duty = (value & 0b1100_0000) >> 6;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel2.set_counter(64 - length);
-                apu.channel2.set_duty(duty);
+                apu.set_channel2_counter(64 - length);
+                apu.set_channel2_duty(duty);
             }
             OFFSET_CHANNEL_2_VOLUME_ENVELOPE => {
                 let starting_volume = (value & 0b1111_0000) >> 4;
                 let envelope_direction = value & 0b0000_1000 != 0;
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel2.set_envelope_starting_volume(starting_volume);
-                apu.channel2.set_volume_envelope_direction(
+                apu.set_channel2_envelope_starting_volume(starting_volume);
+                apu.set_channel2_volume_envelope_direction(
                     envelope_direction,
                 );
-                apu.channel2.set_volume_envelope_period(envelope_period);
+                apu.set_channel2_volume_envelope_period(envelope_period);
             }
-            OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow_mut().channel2.set_frequency_lo(value),
+            OFFSET_CHANNEL_2_FREQUENCY_LO => self.apu.borrow_mut().set_channel2_frequency_lo(value),
             OFFSET_CHANNEL_2_FREQUENCY_HI => {
                 let mut apu = self.apu.borrow_mut();
                 if value & 0b1000_0000 != 0 {
-                    apu.channel2.restart_sound();
+                    apu.restart_channel2_sound();
                 }
                 // TODO: Should be bit 6
-                apu.channel2.set_counter_on(value & 0b1000_0000 != 0);
-                apu.channel2.set_frequency_hi(value & 0b0000_0111);
+                apu.set_channel2_counter_on(value & 0b1000_0000 != 0);
+                apu.set_channel2_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_3_SOUND_ON_OFF => {
                 let sound_on = value & 0b1000_0000 != 0;
-                self.apu.borrow_mut().channel3.set_on(sound_on);
+                self.apu.borrow_mut().set_channel3_on(sound_on);
             }
             OFFSET_CHANNEL_3_SOUND_LENGTH => {
-                self.apu.borrow_mut().channel3.set_counter(
+                self.apu.borrow_mut().set_channel3_counter(
                     256 - value as u16,
                 );
                 self.old_io.write_byte(address, value);
@@ -325,20 +327,20 @@ where
                     3 => 1,
                     _ => panic!("Code location should be unreachable"),
                 };
-                self.apu.borrow_mut().channel3.set_volume(volume);
+                self.apu.borrow_mut().set_channel3_volume(volume);
                 self.old_io.write_byte(address, value);
             }
-            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow_mut().channel3.set_frequency_lo(value),
+            OFFSET_CHANNEL_3_FREQUENCY_LO => self.apu.borrow_mut().set_channel3_frequency_lo(value),
             OFFSET_CHANNEL_3_FREQUENCY_HI => {
                 let mut apu = self.apu.borrow_mut();
                 if value & 0b1000_0000 != 0 {
-                    apu.channel3.restart_sound();
+                    apu.restart_channel3_sound();
                 }
-                apu.channel3.set_counter_on(value & 0b0100_0000 != 0);
-                apu.channel3.set_frequency_hi(value & 0b0000_0111);
+                apu.set_channel3_counter_on(value & 0b0100_0000 != 0);
+                apu.set_channel3_frequency_hi(value & 0b0000_0111);
             }
             OFFSET_CHANNEL_4_SOUND_LENGTH => {
-                self.apu.borrow_mut().channel4.set_counter(
+                self.apu.borrow_mut().set_channel4_counter(
                     64 - (value & 0b0011_1111),
                 );
                 self.old_io.write_byte(address, value);
@@ -348,27 +350,27 @@ where
                 let envelope_direction = value & 0b0000_1000 != 0;
                 let envelope_period = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel4.set_envelope_starting_volume(starting_volume);
-                apu.channel4.set_volume_envelope_direction(
+                apu.set_channel4_envelope_starting_volume(starting_volume);
+                apu.set_channel4_volume_envelope_direction(
                     envelope_direction,
                 );
-                apu.channel4.set_volume_envelope_period(envelope_period);
+                apu.set_channel4_volume_envelope_period(envelope_period);
             }
             OFFSET_CHANNEL_4_POLYNOMIAL_COUNTER => {
                 let prescaler_divider = (value & 0b1111_0000) >> 4;
                 let shift_register_width = value & 0b0000_1000 != 0;
                 let clock_divider = value & 0b0000_0111;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel4.set_prescaler_divider(prescaler_divider);
-                apu.channel4.set_shift_register_width(shift_register_width);
-                apu.channel4.set_clock_divider(clock_divider);
+                apu.set_channel4_prescaler_divider(prescaler_divider);
+                apu.set_channel4_shift_register_width(shift_register_width);
+                apu.set_channel4_clock_divider(clock_divider);
             }
             OFFSET_CHANNEL_4_COUNTER_CONSECUTIVE_INITIAL => {
                 let mut apu = self.apu.borrow_mut();
                 if value & 0b1000_0000 != 0 {
-                    apu.channel4.restart_sound();
+                    apu.restart_channel4_sound();
                 }
-                apu.channel4.set_counter_on(value & 0b0100_0000 != 0);
+                apu.set_channel4_counter_on(value & 0b0100_0000 != 0);
             }
             OFFSET_SOUND_ON_OFF => {
                 self.apu.borrow_mut().set_sound_on(value & 0b1000_0000 != 0);
@@ -378,8 +380,9 @@ where
                 let first = (value & 0xF0) >> 4;
                 let second = value & 0xF;
                 let mut apu = self.apu.borrow_mut();
-                apu.channel3.wave_pattern[offset] = first;
-                apu.channel3.wave_pattern[offset + 1] = second;
+                let wave_pattern = apu.channel3_wave_pattern_mut();
+                wave_pattern[offset] = first;
+                wave_pattern[offset + 1] = second;
             }
             OFFSET_LCDC_STATUS => {
                 let hblank_interrupt = value & 0b0000_1000 != 0;

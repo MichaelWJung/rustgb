@@ -65,14 +65,14 @@ impl<'a> Display for SdlDisplay<'a> {
     fn redraw(&mut self) {
         let pixels = &self.pixels;
         self.texture
-            .with_lock(None, |buffer: &mut [u8], _: usize| {
-                for (i, &p) in pixels.iter().enumerate() {
-                    let offset = i * 3;
-                    let val = (3 - p as u8) * (255 / 3);
-                    buffer[offset] = val;
-                    buffer[offset + 1] = val;
-                    buffer[offset + 2] = val;
-                }
+            .with_lock(None, |buffer: &mut [u8], _: usize| for (i, &p) in
+                pixels.iter().enumerate()
+            {
+                let offset = i * 3;
+                let val = (3 - p as u8) * (255 / 3);
+                buffer[offset] = val;
+                buffer[offset + 1] = val;
+                buffer[offset + 2] = val;
             })
             .unwrap();
         self.canvas.clear();

@@ -32,10 +32,10 @@ pub struct Apu<'a> {
     queue_lengths: VecDeque<usize>,
     queue_diffence_integral: i32,
     sound_on: bool,
-    pub channel1: SquareChannel,
-    pub channel2: SquareChannel,
-    pub channel3: WaveChannel,
-    pub channel4: NoiseChannel,
+    channel1: SquareChannel,
+    channel2: SquareChannel,
+    channel3: WaveChannel,
+    channel4: NoiseChannel,
 }
 
 impl<'a> Apu<'a> {
@@ -77,6 +77,263 @@ impl<'a> Apu<'a> {
             }
         }
     }
+
+    // Sound channel 1: Square wave
+    pub fn get_channel1_on(&self) -> bool {
+        self.channel1.get_on()
+    }
+
+    pub fn restart_channel1_sound(&mut self) {
+        self.channel1.restart_sound();
+    }
+
+    pub fn set_channel1_counter(&mut self, value: u8) {
+        self.channel1.set_counter(value);
+    }
+
+    pub fn set_channel1_frequency_lo(&mut self, frequency_lo: u8) {
+        self.channel1.set_frequency_lo(frequency_lo);
+    }
+
+    pub fn get_channel1_frequency_lo(&self) -> u8 {
+        self.channel1.get_frequency_lo()
+    }
+
+    pub fn set_channel1_frequency_hi(&mut self, frequency_hi: u8) {
+        self.channel1.set_frequency_hi(frequency_hi);
+    }
+
+    pub fn get_channel1_frequency_hi(&self) -> u8 {
+        self.channel1.get_frequency_hi()
+    }
+
+    pub fn set_channel1_counter_on(&mut self, value: bool) {
+        self.channel1.set_counter_on(value);
+    }
+
+    pub fn get_channel1_counter_on(&self) -> bool {
+        self.channel1.get_counter_on()
+    }
+
+    pub fn set_channel1_duty(&mut self, duty: u8) {
+        self.channel1.set_duty(duty);
+    }
+
+    pub fn get_channel1_duty(&self) -> u8 {
+        self.channel1.get_duty()
+    }
+
+    pub fn set_channel1_envelope_starting_volume(&mut self, value: u8) {
+        self.channel1.set_envelope_starting_volume(value);
+    }
+
+    pub fn get_channel1_envelope_starting_volume(&self) -> u8 {
+        self.channel1.get_envelope_starting_volume()
+    }
+
+    pub fn set_channel1_volume_envelope_direction(&mut self, direction: bool) {
+        self.channel1.set_volume_envelope_direction(direction);
+    }
+
+    pub fn get_channel1_volume_envelope_direction(&self) -> bool {
+        self.channel1.get_volume_envelope_direction()
+    }
+
+    pub fn set_channel1_volume_envelope_period(&mut self, period: u8) {
+        self.channel1.set_volume_envelope_period(period);
+    }
+
+    pub fn get_channel1_volume_envelope_period(&self) -> u8 {
+        self.channel1.get_volume_envelope_period()
+    }
+
+    // Sound channel 2: Square wave
+    pub fn get_channel2_on(&self) -> bool {
+        self.channel2.get_on()
+    }
+
+    pub fn restart_channel2_sound(&mut self) {
+        self.channel2.restart_sound();
+    }
+
+    pub fn set_channel2_counter(&mut self, value: u8) {
+        self.channel2.set_counter(value);
+    }
+
+    pub fn set_channel2_frequency_lo(&mut self, frequency_lo: u8) {
+        self.channel2.set_frequency_lo(frequency_lo);
+    }
+
+    pub fn get_channel2_frequency_lo(&self) -> u8 {
+        self.channel2.get_frequency_lo()
+    }
+
+    pub fn set_channel2_frequency_hi(&mut self, frequency_hi: u8) {
+        self.channel2.set_frequency_hi(frequency_hi);
+    }
+
+    pub fn get_channel2_frequency_hi(&self) -> u8 {
+        self.channel2.get_frequency_hi()
+    }
+
+    pub fn set_channel2_counter_on(&mut self, value: bool) {
+        self.channel2.set_counter_on(value);
+    }
+
+    pub fn get_channel2_counter_on(&self) -> bool {
+        self.channel2.get_counter_on()
+    }
+
+    pub fn set_channel2_duty(&mut self, duty: u8) {
+        self.channel2.set_duty(duty);
+    }
+
+    pub fn get_channel2_duty(&self) -> u8 {
+        self.channel2.get_duty()
+    }
+
+    pub fn set_channel2_envelope_starting_volume(&mut self, value: u8) {
+        self.channel2.set_envelope_starting_volume(value);
+    }
+
+    pub fn get_channel2_envelope_starting_volume(&self) -> u8 {
+        self.channel2.get_envelope_starting_volume()
+    }
+
+    pub fn set_channel2_volume_envelope_direction(&mut self, direction: bool) {
+        self.channel2.set_volume_envelope_direction(direction);
+    }
+
+    pub fn get_channel2_volume_envelope_direction(&self) -> bool {
+        self.channel2.get_volume_envelope_direction()
+    }
+
+    pub fn set_channel2_volume_envelope_period(&mut self, period: u8) {
+        self.channel2.set_volume_envelope_period(period);
+    }
+
+    pub fn get_channel2_volume_envelope_period(&self) -> u8 {
+        self.channel2.get_volume_envelope_period()
+    }
+
+    // Sound channel 3: Wave channel
+    pub fn set_channel3_on(&mut self, on: bool) {
+        self.channel3.set_on(on)
+    }
+
+    pub fn get_channel3_on(&self) -> bool {
+        self.channel3.get_on()
+    }
+
+    pub fn restart_channel3_sound(&mut self) {
+        self.channel3.restart_sound();
+    }
+
+    pub fn set_channel3_counter(&mut self, value: u16) {
+        self.channel3.set_counter(value);
+    }
+
+    pub fn set_channel3_volume(&mut self, volume: u8) {
+        self.channel3.set_volume(volume);
+    }
+
+    pub fn set_channel3_frequency_lo(&mut self, frequency_lo: u8) {
+        self.channel3.set_frequency_lo(frequency_lo);
+    }
+
+    pub fn get_channel3_frequency_lo(&self) -> u8 {
+        self.channel3.get_frequency_lo()
+    }
+
+    pub fn set_channel3_frequency_hi(&mut self, frequency_hi: u8) {
+        self.channel3.set_frequency_hi(frequency_hi);
+    }
+
+    pub fn get_channel3_frequency_hi(&self) -> u8 {
+        self.channel3.get_frequency_hi()
+    }
+
+    pub fn set_channel3_counter_on(&mut self, value: bool) {
+        self.channel3.set_counter_on(value);
+    }
+
+    pub fn get_channel3_counter_on(&self) -> bool {
+        self.channel3.get_counter_on()
+    }
+
+    pub fn channel3_wave_pattern(&self) -> &[u8] {
+        &self.channel3.wave_pattern
+    }
+
+    pub fn channel3_wave_pattern_mut(&mut self) -> &mut [u8] {
+        &mut self.channel3.wave_pattern
+    }
+
+    // Sound channel 2: Noise
+    pub fn restart_channel4_sound(&mut self) {
+        self.channel4.restart_sound();
+    }
+
+    pub fn set_channel4_counter(&mut self, value: u8) {
+        self.channel4.set_counter(value);
+    }
+
+    pub fn set_channel4_counter_on(&mut self, value: bool) {
+        self.channel4.set_counter_on(value);
+    }
+
+    pub fn get_channel4_counter_on(&self) -> bool {
+        self.channel4.get_counter_on()
+    }
+
+    pub fn set_channel4_envelope_starting_volume(&mut self, value: u8) {
+        self.channel4.set_envelope_starting_volume(value);
+    }
+
+    pub fn get_channel4_envelope_starting_volume(&self) -> u8 {
+        self.channel4.get_envelope_starting_volume()
+    }
+
+    pub fn set_channel4_volume_envelope_direction(&mut self, direction: bool) {
+        self.channel4.set_volume_envelope_direction(direction);
+    }
+
+    pub fn get_channel4_volume_envelope_direction(&self) -> bool {
+        self.channel4.get_volume_envelope_direction()
+    }
+
+    pub fn set_channel4_volume_envelope_period(&mut self, period: u8) {
+        self.channel4.set_volume_envelope_period(period);
+    }
+
+    pub fn get_channel4_volume_envelope_period(&self) -> u8 {
+        self.channel4.get_volume_envelope_period()
+    }
+
+    pub fn set_channel4_shift_register_width(&mut self, shift_register_width: bool) {
+        self.channel4.set_shift_register_width(shift_register_width);
+    }
+
+    pub fn get_channel4_shift_register_width(&self) -> bool {
+        self.channel4.get_shift_register_width()
+    }
+
+    pub fn set_channel4_clock_divider(&mut self, clock_divider: u8) {
+        self.channel4.set_clock_divider(clock_divider);
+    }
+
+    pub fn get_channel4_clock_divider(&self) -> u8 {
+        self.channel4.get_clock_divider()
+    }
+
+    pub fn set_channel4_prescaler_divider(&mut self, prescaler_divider: u8) {
+        self.channel4.set_prescaler_divider(prescaler_divider);
+    }
+
+    pub fn get_channel4_prescaler_divider(&self) -> u8 {
+        self.channel4.get_prescaler_divider()
+    }
+
 
     fn clock_tick(&mut self) {
         self.channel1.clock_tick();
