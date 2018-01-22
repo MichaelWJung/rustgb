@@ -44,7 +44,7 @@ impl SdlDisplayContext {
 pub struct SdlDisplay<'a> {
     pixels: [u8; PIXELS],
     canvas: &'a mut Canvas<Window>,
-    texture: Texture<'a>,
+    texture: Texture,
 }
 
 impl<'a> SdlDisplay<'a> {
